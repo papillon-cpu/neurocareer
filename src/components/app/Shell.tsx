@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { brand } from "@/config/brand";
 import { logoutAction } from "@/modules/auth/actions";
+import { DemoSwitcher } from "@/components/DemoSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NavLink } from "./NavLink";
 
@@ -29,6 +30,7 @@ export function Shell({
           <span className="rounded-full border border-line px-3 py-1 font-mono text-xs text-mist">{area}</span>
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden max-w-48 truncate text-xs text-mist sm:block">{email}</span>
+            <DemoSwitcher />
             <ThemeToggle />
             <form action={logoutAction}>
               <button type="submit" className="rounded-full border border-line px-4 py-1.5 text-xs text-mist hover:border-neuron hover:text-neuron">

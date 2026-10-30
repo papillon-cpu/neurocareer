@@ -514,3 +514,25 @@ describe("контакты и удаление данных", () => {
     expect(await db.select().from(schema.vacancies).where(eq(schema.vacancies.employerUserId, reg.id))).toHaveLength(0);
   });
 });
+
+describe("демо-режим", () => {
+  it("в production выключен без явной переменной и включается только DEMO_MODE=1", async () => {
+    const { demoEnabled } = await import("@/modules/demo/config");
+    const env = process.env as Record<string, string | undefined>;
+    const saved = { n: env.NODE_ENV, d: env.DEMO_MODE };
+    try {
+      env.NODE_ENV = "production";
+      delete env.DEMO_MODE;
+      expect(demoEnabled()).toBe(false);
+      env.DEMO_MODE = "1";
+      expect(demoEnabled()).toBe(true);
+      env.NODE_ENV = "development";
+      delete env.DEMO_MODE;
+      expect(demoEnabled()).toBe(true);
+    } finally {
+      env.NODE_ENV = saved.n;
+      if (saved.d === undefined) delete env.DEMO_MODE;
+      else env.DEMO_MODE = saved.d;
+    }
+  });
+});

@@ -33,6 +33,7 @@ async function main() {
     const password = randomBytes(9).toString("base64url");
     for (const [email, role, fullName] of [
       ["demo-employee@example.com", "employee", "Демо Сотрудник"],
+      ["demo-admin@example.com", "admin", "Демо Админ"],
       ["demo-employer@example.com", "employer", "Демо Работодатель"],
     ] as const) {
       const [exists] = await db.select().from(schema.users).where(eq(schema.users.email, email));
@@ -40,7 +41,8 @@ async function main() {
         console.log("Демо-пользователь уже есть:", email, "(пароль не меняется)");
         continue;
       }
-      await registerUser({ fullName, email, password, role, acceptService: true, acceptMarketing: false });
+      if (role === "admin") await db.insert(schema.users).values({ email, passwordHash: await hashPassword(password), role });
+      else await registerUser({ fullName, email, password, role, acceptService: true, acceptMarketing: false });
       console.log(`Демо-пользователь: ${email}  пароль: ${password}  (только для локальной разработки)`);
     }
   }
