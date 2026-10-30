@@ -200,6 +200,8 @@ export const assessmentResults = pgTable("assessment_results", {
     .references(() => assessmentAttempts.id, { onDelete: "cascade" }),
   // Полный снимок отчёта на момент прохождения: старые результаты не меняются при обновлении методики.
   report: jsonb("report").$type<unknown>().notNull(),
+  // AI-пояснение к отчёту: создаётся по запросу пользователя и хранится, чтобы не тратить запросы повторно.
+  aiCommentary: jsonb("ai_commentary").$type<unknown>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

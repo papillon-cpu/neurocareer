@@ -1,0 +1,1 @@
+ALTER TABLE "assessment_results" ADD COLUMN "ai_commentary" jsonb;

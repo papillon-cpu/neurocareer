@@ -1,11 +1,12 @@
 export type ProviderId = "anthropic" | "openai";
-export type AiTask = "assistant" | "resume_parse" | "resume_rewrite";
+export type AiTask = "assistant" | "resume_parse" | "resume_rewrite" | "report_commentary";
 
 /** Настройки по задачам: лимит ответа и таймаут. Провайдер и модель берутся из переменных окружения. */
 export const TASKS: Record<AiTask, { maxOutputTokens: number; timeoutMs: number }> = {
   assistant: { maxOutputTokens: 1200, timeoutMs: 45_000 },
   resume_parse: { maxOutputTokens: 3500, timeoutMs: 60_000 },
   resume_rewrite: { maxOutputTokens: 800, timeoutMs: 30_000 },
+  report_commentary: { maxOutputTokens: 1500, timeoutMs: 45_000 },
 };
 
 const env = (name: string) => process.env[name]?.trim() || undefined;

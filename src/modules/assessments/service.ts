@@ -132,13 +132,16 @@ export async function getReport(userId: string, attemptId: string) {
   const [row] = await db
     .select({
       report: schema.assessmentResults.report,
+      aiCommentary: schema.assessmentResults.aiCommentary,
       completedAt: schema.assessmentAttempts.completedAt,
       slug: schema.assessmentAttempts.slug,
     })
     .from(schema.assessmentResults)
     .innerJoin(schema.assessmentAttempts, eq(schema.assessmentAttempts.id, schema.assessmentResults.attemptId))
     .where(and(eq(schema.assessmentAttempts.id, attemptId), eq(schema.assessmentAttempts.userId, userId)));
-  return row ? { report: row.report as Report, completedAt: row.completedAt, slug: row.slug } : null;
+  return row
+    ? { report: row.report as Report, completedAt: row.completedAt, slug: row.slug, aiCommentary: row.aiCommentary }
+    : null;
 }
 
 export type TestStatus = {

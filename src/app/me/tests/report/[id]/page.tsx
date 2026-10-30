@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/modules/auth/dal";
 import { getReport } from "@/modules/assessments/service";
+import { aiStatus } from "@/modules/ai/status";
+import { commentarySchema } from "@/modules/assessments/ai";
+import { AiCommentary } from "@/components/tests/AiCommentary";
 import { ReportView } from "@/components/tests/ReportView";
 
 export const metadata = { title: "Результат теста" };
@@ -11,8 +14,9 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
   const user = await requireRole("employee");
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
-  const data = await getReport(user.id, id);
+  const [data, ai] = await Promise.all([getReport(user.id, id), aiStatus(user.id, "report_commentary")]);
   if (!data) notFound();
+  const saved = commentarySchema.safeParse(data.aiCommentary);
 
   return (
     <>
@@ -20,6 +24,9 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
         ← Все тесты
       </Link>
       <ReportView report={data.report} completedAt={data.completedAt} />
+      <div className="mt-6">
+        <AiCommentary attemptId={id} status={ai} initial={saved.success ? saved.data : null} />
+      </div>
     </>
   );
 }

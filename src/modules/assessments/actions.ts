@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/modules/auth/dal";
 import { rateLimit } from "@/modules/auth/rate-limit";
+import { explainReport, type ExplainResult } from "./ai";
 import * as service from "./service";
 
 const uuid = z.uuid();
@@ -50,4 +51,11 @@ export async function completeAttemptAction(attemptId: string): Promise<AnswerSt
     };
   }
   redirect(`/me/tests/report/${attemptId}`);
+}
+
+/** AI-пояснение к своему результату. Права и согласие проверяются на сервере. */
+export async function explainReportAction(attemptId: string, refresh = false): Promise<ExplainResult> {
+  const user = await requireRole("employee");
+  if (!uuid.safeParse(attemptId).success) return { ok: false, error: "Результат не найден." };
+  return explainReport(user.id, attemptId, refresh === true);
 }
