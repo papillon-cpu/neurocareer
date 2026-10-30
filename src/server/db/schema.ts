@@ -1,5 +1,8 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  integer,
+  uniqueIndex,
   index,
   jsonb,
   pgEnum,
@@ -20,6 +23,8 @@ export const consentPurposeEnum = pgEnum("consent_purpose", [
 ]);
 
 export const resumeSourceEnum = pgEnum("resume_source", ["manual", "import"]);
+
+export const attemptStatusEnum = pgEnum("attempt_status", ["in_progress", "completed"]);
 
 export const workFormatEnum = pgEnum("work_format", ["office", "hybrid", "remote"]);
 
@@ -145,3 +150,55 @@ export const resumeVersions = pgTable(
   },
   (t) => [index("resume_versions_resume_idx").on(t.resumeId)],
 );
+
+// Определения тестов и их версии лежат в коде (modules/assessments/definitions) вместе с ключами проверки,
+// которые никогда не уходят на клиент. В БД — прохождения: какая версия методики, порядок, ответы, итог.
+export const assessmentAttempts = pgTable(
+  "assessment_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    version: integer("version").notNull(),
+    // Из seed детерминированно получается порядок заданий и вариантов ответа.
+    seed: integer("seed").notNull(),
+    status: attemptStatusEnum("status").notNull().default("in_progress"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("attempts_user_idx").on(t.userId, t.slug),
+    // Не больше одной незавершённой попытки одного теста у пользователя.
+    uniqueIndex("attempts_one_active_idx")
+      .on(t.userId, t.slug)
+      .where(sql`${t.status} = 'in_progress'`),
+  ],
+);
+
+export const assessmentAnswers = pgTable(
+  "assessment_answers",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    attemptId: uuid("attempt_id")
+      .notNull()
+      .references(() => assessmentAttempts.id, { onDelete: "cascade" }),
+    questionId: text("question_id").notNull(),
+    value: jsonb("value").$type<string | number>().notNull(),
+    answeredAt: timestamp("answered_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("answers_attempt_question_idx").on(t.attemptId, t.questionId)],
+);
+
+// Один результат на попытку (unique): повторное завершение не создаёт и не начисляет ничего заново.
+export const assessmentResults = pgTable("assessment_results", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  attemptId: uuid("attempt_id")
+    .notNull()
+    .unique()
+    .references(() => assessmentAttempts.id, { onDelete: "cascade" }),
+  // Полный снимок отчёта на момент прохождения: старые результаты не меняются при обновлении методики.
+  report: jsonb("report").$type<unknown>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

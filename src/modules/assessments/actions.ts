@@ -1,0 +1,53 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { requireRole } from "@/modules/auth/dal";
+import { rateLimit } from "@/modules/auth/rate-limit";
+import * as service from "./service";
+
+const uuid = z.uuid();
+
+export async function startAttemptAction(form: FormData): Promise<void> {
+  const user = await requireRole("employee");
+  const slug = z.string().max(40).safeParse(form.get("slug"));
+  if (!slug.success) redirect("/me/tests");
+  const attempt = await service.startOrResume(user.id, slug.data);
+  if (!attempt) redirect("/me/tests");
+  redirect(`/me/tests/attempt/${attempt.id}`);
+}
+
+export type AnswerState = { ok: true } | { ok: false; error: string };
+
+/** Вызывается из теста при каждом выборе: прогресс сохраняется сразу. */
+export async function saveAnswerAction(attemptId: string, questionId: string, value: string | number): Promise<AnswerState> {
+  const user = await requireRole("employee");
+  if (!uuid.safeParse(attemptId).success || typeof questionId !== "string" || questionId.length > 60) {
+    return { ok: false, error: "Не удалось сохранить ответ." };
+  }
+  if (!rateLimit(`answer:${user.id}`, 600, 60 * 60 * 1000).ok) {
+    return { ok: false, error: "Слишком много запросов. Подождите немного." };
+  }
+  const res = await service.saveAnswer(user.id, attemptId, questionId, value);
+  if (res.ok) return res;
+  return {
+    ok: false,
+    error: res.reason === "finished" ? "Тест уже завершён." : "Не удалось сохранить ответ. Обновите страницу.",
+  };
+}
+
+export async function completeAttemptAction(attemptId: string): Promise<AnswerState> {
+  const user = await requireRole("employee");
+  if (!uuid.safeParse(attemptId).success) return { ok: false, error: "Тест не найден." };
+  const res = await service.completeAttempt(user.id, attemptId);
+  if (!res.ok) {
+    return {
+      ok: false,
+      error:
+        res.reason === "missing"
+          ? `Остались неотвеченные задания: ${res.missing}. Ответьте на них, чтобы завершить тест.`
+          : "Тест не найден.",
+    };
+  }
+  redirect(`/me/tests/report/${attemptId}`);
+}
