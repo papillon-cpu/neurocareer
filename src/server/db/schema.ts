@@ -19,6 +19,7 @@ export const consentPurposeEnum = pgEnum("consent_purpose", [
   "profile_publication",
   "employer_data_sharing",
   "external_ai",
+  "ai_matching",
   "marketing",
 ]);
 
@@ -30,6 +31,9 @@ export const paymentKindEnum = pgEnum("payment_kind", ["employee_access", "emplo
 export const paymentStatusEnum = pgEnum("payment_status", ["pending", "succeeded", "failed", "canceled"]);
 
 export const workFormatEnum = pgEnum("work_format", ["office", "hybrid", "remote"]);
+
+export const vacancyStatusEnum = pgEnum("vacancy_status", ["draft", "pending", "published", "rejected", "closed"]);
+export const vacancyLevelEnum = pgEnum("vacancy_level", ["intern", "junior", "middle", "senior", "lead"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -368,3 +372,85 @@ export const profileVisibility = pgTable("profile_visibility", {
   publishedAt: timestamp("published_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/* ---------- вакансии и подбор ---------- */
+
+// Вакансия работодателя. Статус «опубликована» ставит только администратор (модерация).
+export const vacancies = pgTable(
+  "vacancies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    employerUserId: uuid("employer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    tasks: text("tasks").notNull().default(""),
+    mustSkills: jsonb("must_skills").$type<string[]>().notNull().default([]),
+    niceSkills: jsonb("nice_skills").$type<string[]>().notNull().default([]),
+    minExperienceYears: integer("min_experience_years"),
+    level: vacancyLevelEnum("level"),
+    workFormat: workFormatEnum("work_format"),
+    city: text("city").notNull().default(""),
+    salaryFrom: integer("salary_from"),
+    salaryTo: integer("salary_to"),
+    extra: text("extra").notNull().default(""),
+    status: vacancyStatusEnum("status").notNull().default("draft"),
+    // Причина отклонения или снятия, видна работодателю.
+    moderationNote: text("moderation_note").notNull().default(""),
+    // Структурированный разбор требований (AI или правила) и откуда он получен.
+    analysis: jsonb("analysis").$type<unknown>(),
+    analysisSource: text("analysis_source").$type<"ai" | "rules">(),
+    analyzedAt: timestamp("analyzed_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("vacancies_employer_idx").on(t.employerUserId, t.status), index("vacancies_status_idx").on(t.status, t.updatedAt)],
+);
+
+// История рекомендаций для аудита: что и почему показали работодателю. Персональных данных кандидата здесь нет:
+// только оценка совпадения и названия навыков. runId объединяет результаты одного запуска подбора.
+export const matchRecommendations = pgTable(
+  "match_recommendations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vacancyId: uuid("vacancy_id")
+      .notNull()
+      .references(() => vacancies.id, { onDelete: "cascade" }),
+    candidateUserId: uuid("candidate_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    runId: uuid("run_id").notNull(),
+    rank: integer("rank").notNull(),
+    score: integer("score").notNull(),
+    mustMatched: integer("must_matched").notNull(),
+    mustTotal: integer("must_total").notNull(),
+    explanation: jsonb("explanation").$type<unknown>().notNull(),
+    // Вывод AI (отдельно от данных); null, если не запрашивался.
+    aiInference: jsonb("ai_inference").$type<unknown>(),
+    algorithmVersion: text("algorithm_version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("match_rec_vacancy_idx").on(t.vacancyId, t.runId), index("match_rec_candidate_idx").on(t.candidateUserId)],
+);
+
+// Жалобы работодателей на ошибочные рекомендации; разбирает администратор.
+export const recommendationReports = pgTable(
+  "recommendation_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    recommendationId: uuid("recommendation_id")
+      .notNull()
+      .references(() => matchRecommendations.id, { onDelete: "cascade" }),
+    reporterUserId: uuid("reporter_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    comment: text("comment").notNull().default(""),
+    status: text("status").$type<"open" | "resolved">().notNull().default("open"),
+    resolutionNote: text("resolution_note").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("rec_report_unique_idx").on(t.recommendationId, t.reporterUserId), index("rec_report_status_idx").on(t.status, t.createdAt)],
+);

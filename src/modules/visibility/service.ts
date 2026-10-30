@@ -168,6 +168,27 @@ export async function getPublishedCard(candidateId: string): Promise<CandidateCa
   };
 }
 
+/** Кандидаты с опубликованным профилем: основа для подбора. Содержимое каждого получают только через getPublishedCard. */
+export async function listPublishedCandidateIds(limit = 500): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db
+    .select({ id: schema.profileVisibility.userId })
+    .from(schema.profileVisibility)
+    .innerJoin(schema.users, and(eq(schema.users.id, schema.profileVisibility.userId), isNull(schema.users.deletedAt)))
+    .where(eq(schema.profileVisibility.published, true))
+    .orderBy(schema.profileVisibility.userId)
+    .limit(limit);
+  return rows.map((r) => r.id);
+}
+
+/** Можно ли вообще получить контакты кандидата: опубликован, дал согласие на передачу и выбрал хотя бы один способ связи. */
+export async function contactsShareable(candidateId: string): Promise<boolean> {
+  const row = await loadPublished(candidateId);
+  if (!row || !(await hasConsent(candidateId, "employer_data_sharing"))) return false;
+  const resume = readContent(row.content);
+  return (row.vis.shareEmail && Boolean(resume.basics.email)) || (row.vis.sharePhone && Boolean(resume.basics.phone));
+}
+
 /**
  * Карточка + контакты для работодателя. Контакты выдаются, только если одновременно: профиль опубликован,
  * работодатель открыл контакт в рамках подписки, кандидат дал согласие на передачу данных и выбрал, что показывать.
@@ -205,6 +226,9 @@ export async function deleteAccount(userId: string, password: string): Promise<D
 
   await db.transaction(async (tx) => {
     const [employer] = await tx.select().from(schema.employerProfiles).where(eq(schema.employerProfiles.userId, userId));
+    // История рекомендаций: кандидата — как кандидата; работодателя — вместе с его вакансиями (каскад).
+    await tx.delete(schema.matchRecommendations).where(eq(schema.matchRecommendations.candidateUserId, userId));
+    await tx.delete(schema.vacancies).where(eq(schema.vacancies.employerUserId, userId));
     await tx.delete(schema.profileVisibility).where(eq(schema.profileVisibility.userId, userId));
     await tx.delete(schema.employeeProfiles).where(eq(schema.employeeProfiles.userId, userId));
     await tx.delete(schema.resumes).where(eq(schema.resumes.userId, userId));

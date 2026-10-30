@@ -17,9 +17,10 @@ const btn = "rounded-full border border-line px-4 py-1.5 text-xs text-mist hover
 
 export default async function PrivacyPage() {
   const user = await requireRole("employee");
-  const [consents, ai, marketing, sharing, access, vis, versions] = await Promise.all([
+  const [consents, ai, aiMatching, marketing, sharing, access, vis, versions] = await Promise.all([
     getConsents(user.id),
     hasConsent(user.id, "external_ai"),
+    hasConsent(user.id, "ai_matching"),
     hasConsent(user.id, "marketing"),
     hasConsent(user.id, "employer_data_sharing"),
     hasEmployeeAccess(user.id),
@@ -30,6 +31,7 @@ export default async function PrivacyPage() {
 
   const toggles = [
     { purpose: "external_ai" as const, on: ai, note: "Без этого согласия AI-консультант и AI в резюме не получают ваших данных." },
+    { purpose: "ai_matching" as const, on: aiMatching, note: "Необязательно. Пока не разрешено, AI не видит вашу карточку: подбор для работодателя идёт по структурированным данным." },
     { purpose: "marketing" as const, on: marketing, note: "Необязательно." },
   ];
 

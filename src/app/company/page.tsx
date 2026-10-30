@@ -18,7 +18,7 @@ export default async function EmployerHome() {
     <>
       <PageTitle
         title={data.company ? data.company.name : "Добро пожаловать"}
-        lead="Начни с данных о компании: они понадобятся для вакансий и видны кандидатам. Вакансии и подбор появятся в следующих этапах."
+        lead="Заполните данные о компании, оформите подписку, создайте вакансию и получите объяснимый подбор среди опубликованных профилей."
       />
       <div className="grid gap-6 md:grid-cols-2">
         <CompletenessPanel data={completeness} href="/company/settings" title="Заполненность компании" />
@@ -46,9 +46,11 @@ export default async function EmployerHome() {
           </Panel>
           <Panel title="Вакансии и кандидаты">
             <p className="text-sm text-mist">
-              Раздел в разработке. Подбор будет объяснять, почему кандидат подходит, и опираться только на то,
-              что кандидат разрешил показывать.
+              Подбор объясняет, почему кандидат подходит, и опирается только на то, что кандидат сам опубликовал.
             </p>
+            <Link href="/company/vacancies" className="mt-3 inline-block text-sm text-neuron underline-offset-4 hover:underline">
+              К вакансиям →
+            </Link>
           </Panel>
         </div>
       </div>

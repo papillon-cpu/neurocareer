@@ -2,12 +2,19 @@ import { and, eq, gte, sql } from "drizzle-orm";
 import type { z } from "zod";
 import { rateLimit } from "@/modules/auth/rate-limit";
 import { hasConsent } from "@/modules/consent/service";
+import type { ConsentPurpose } from "@/server/db/schema";
 import { getDb, schema } from "@/server/db";
 import { limits, missingConfig, providerChain, providerModel, TASKS, type AiTask, type ProviderId } from "./config";
 import { AiBudgetError, AiConsentError, AiInvalidOutputError, AiNotConfiguredError, AiProviderError, AiRateLimitError } from "./errors";
 import { classifyError, providers, type ChatMessage } from "./providers";
 
-export type AiContext = { userId: string; task: AiTask };
+/**
+ * Чьё согласие нужно перед отправкой данных провайдеру. По умолчанию — согласие самого пользователя на внешний AI.
+ * Если AI обрабатывает данные другого человека (кандидата для работодателя), нужно его согласие на эту цель;
+ * "none" — в запросе нет персональных данных (например, текст вакансии, написанный самим работодателем).
+ */
+export type AiConsent = "none" | { purpose: ConsentPurpose; userIds: string[] };
+export type AiContext = { userId: string; task: AiTask; consent?: AiConsent };
 export type AiRequest = { system: string; messages: ChatMessage[] };
 export type AiResult = { text: string; provider: ProviderId; model: string };
 
@@ -54,7 +61,10 @@ export async function aiComplete(ctx: AiContext, req: AiRequest): Promise<AiResu
   const chain = providerChain(ctx.task);
   if (chain.length === 0) throw new AiNotConfiguredError(missingConfig(ctx.task));
 
-  if (!(await hasConsent(ctx.userId, "external_ai"))) throw new AiConsentError();
+  const required = ctx.consent ?? { purpose: "external_ai" as const, userIds: [ctx.userId] };
+  if (required !== "none") {
+    for (const id of required.userIds) if (!(await hasConsent(id, required.purpose))) throw new AiConsentError();
+  }
 
   const { requestsPerHour, tokensPerMonth } = limits();
   if (!rateLimit(`ai:${ctx.userId}`, requestsPerHour, 60 * 60 * 1000).ok) throw new AiRateLimitError();
