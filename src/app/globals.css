@@ -102,3 +102,17 @@ body {
     animation: none;
   }
 }
+
+@media print {
+  .shell-chrome,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+}

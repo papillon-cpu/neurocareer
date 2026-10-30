@@ -19,6 +19,8 @@ export const consentPurposeEnum = pgEnum("consent_purpose", [
   "marketing",
 ]);
 
+export const resumeSourceEnum = pgEnum("resume_source", ["manual", "import"]);
+
 export const workFormatEnum = pgEnum("work_format", ["office", "hybrid", "remote"]);
 
 export const users = pgTable("users", {
@@ -108,3 +110,38 @@ export const auditEvents = pgTable(
 
 export type Role = (typeof roleEnum.enumValues)[number];
 export type ConsentPurpose = (typeof consentPurposeEnum.enumValues)[number];
+
+export const resumes = pgTable(
+  "resumes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("resumes_user_idx").on(t.userId)],
+);
+
+// Версия — отдельный вариант содержимого резюме (например, под конкретную вакансию).
+export const resumeVersions = pgTable(
+  "resume_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    resumeId: uuid("resume_id")
+      .notNull()
+      .references(() => resumes.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    content: jsonb("content").$type<unknown>().notNull(),
+    source: resumeSourceEnum("source").notNull().default("manual"),
+    // Исходный текст загруженного файла: показывается рядом при проверке. Сам файл не хранится.
+    sourceText: text("source_text"),
+    // Что нужно проверить пользователю; пусто — проверка подтверждена.
+    reviewNotes: jsonb("review_notes").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("resume_versions_resume_idx").on(t.resumeId)],
+);

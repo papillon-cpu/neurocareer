@@ -21,7 +21,7 @@ export function Shell({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-20 border-b border-line/60 bg-ink/85 backdrop-blur">
+      <header className="shell-chrome sticky top-0 z-20 border-b border-line/60 bg-ink/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3">
           <Link href="/" className="font-display text-sm">
             {brand.name}
@@ -47,7 +47,7 @@ export function Shell({
       </header>
       <div className="mx-auto w-full max-w-6xl flex-1 px-5 py-10">{children}</div>
       {upcoming && upcoming.length > 0 && (
-        <footer className="border-t border-line">
+        <footer className="shell-chrome border-t border-line">
           <p className="mx-auto max-w-6xl px-5 py-5 text-xs text-mist">
             Появятся в следующих этапах: {upcoming.join(", ")}.
           </p>
