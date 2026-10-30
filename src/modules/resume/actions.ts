@@ -7,6 +7,8 @@ import { requireRole } from "@/modules/auth/dal";
 import { rateLimit } from "@/modules/auth/rate-limit";
 import type { FormState } from "@/modules/auth/schemas";
 import { getEmployeeProfile } from "@/modules/profile/queries";
+import { AiError } from "@/modules/ai/errors";
+import { aiParseResume, aiRewrite, type RewriteResult } from "./ai";
 import { emptyContent, resumeContentSchema } from "./content";
 import { extractResumeText, ResumeFileError } from "./extract";
 import { parseResumeText } from "./parser";
@@ -50,7 +52,16 @@ export async function importResumeAction(_prev: FormState, form: FormData): Prom
   let ids;
   try {
     const { text } = await extractResumeText(new Uint8Array(await file.arrayBuffer()));
-    const { content, notes } = parseResumeText(text);
+    let { content, notes } = parseResumeText(text);
+    if (form.get("useAi") === "on") {
+      try {
+        ({ content, notes } = await aiParseResume(user.id, text));
+      } catch (e) {
+        if (!(e instanceof AiError)) throw e;
+        // AI не заменяет разбор молча: пользователь видит, что был использован запасной вариант.
+        notes = [`AI не сработал (${e.userMessage}) Использован разбор по правилам.`, ...notes];
+      }
+    }
     ids = await service.createResume(user.id, {
       title: file.name.replace(/\.(pdf|docx)$/i, "").slice(0, 80) || "Импортированное резюме",
       content,
@@ -89,6 +100,15 @@ export async function saveVersionAction(_prev: FormState, form: FormData): Promi
   if (!saved) return { error: "Версия не найдена." };
   revalidatePath("/me/resume", "layout");
   return { ok: true };
+}
+
+/** Предлагает улучшенную формулировку. Ничего не сохраняет: применяет или отклоняет пользователь. */
+export async function rewriteTextAction(text: string, kind: "experience" | "summary"): Promise<RewriteResult> {
+  const user = await requireRole("employee");
+  if (typeof text !== "string" || (kind !== "experience" && kind !== "summary")) {
+    return { ok: false, error: "Не удалось обработать запрос." };
+  }
+  return aiRewrite(user.id, text, kind);
 }
 
 export async function confirmReviewAction(form: FormData): Promise<void> {

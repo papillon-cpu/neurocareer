@@ -202,3 +202,50 @@ export const assessmentResults = pgTable("assessment_results", {
   report: jsonb("report").$type<unknown>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Журнал вызовов AI: только технические данные, без текста запросов и ответов.
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    task: text("task").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    latencyMs: integer("latency_ms").notNull().default(0),
+    // ok или код ошибки: timeout, rate_limited, auth, invalid_output, ...
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ai_usage_user_idx").on(t.userId, t.createdAt)],
+);
+
+export const aiConversations = pgTable(
+  "ai_conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default("Новый диалог"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ai_conv_user_idx").on(t.userId, t.updatedAt)],
+);
+
+export const aiMessages = pgTable(
+  "ai_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => aiConversations.id, { onDelete: "cascade" }),
+    role: text("role").$type<"user" | "assistant">().notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ai_msg_conv_idx").on(t.conversationId, t.createdAt)],
+);

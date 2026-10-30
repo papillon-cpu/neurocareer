@@ -8,5 +8,7 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     env: { PGLITE_DATA_DIR: "memory://", DATABASE_URL: "" },
     testTimeout: 30000,
+    // В каждом файле своя встроенная БД (WASM): параллельно они не помещаются в память.
+    fileParallelism: false,
   },
 });

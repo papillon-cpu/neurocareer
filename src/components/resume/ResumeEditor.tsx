@@ -11,7 +11,9 @@ import {
 } from "@/modules/resume/actions";
 import { TEMPLATES, type ResumeContent } from "@/modules/resume/content";
 import { Field, FormMessage, Input, SubmitButton, Textarea } from "@/components/ui/Field";
+import { AiRewrite } from "./AiRewrite";
 import { ResumeView } from "./ResumeView";
+import type { AiStatus } from "@/modules/ai/status";
 
 type VersionInfo = { id: string; label: string; needsReview: boolean };
 
@@ -23,6 +25,7 @@ type Props = {
   reviewNotes: string[];
   sourceText: string | null;
   versions: VersionInfo[];
+  aiStatus: AiStatus;
 };
 
 const btn =
@@ -184,6 +187,7 @@ export function ResumeEditor(p: Props) {
             <Field label="О себе">
               <Textarea value={b.summary} onChange={(e) => patchBasics("summary", e.target.value)} />
             </Field>
+            <AiRewrite text={b.summary} kind="summary" status={p.aiStatus} onApply={(v) => patchBasics("summary", v)} />
           </Group>
 
           <Group title="Опыт работы" onAdd={() => add("experience", { company: "", position: "", start: "", end: "", description: "" })} addLabel="Добавить место работы">
@@ -206,6 +210,7 @@ export function ResumeEditor(p: Props) {
                 <Field label="Что делали и каких результатов достигли">
                   <Textarea value={e.description} onChange={(ev) => patchList("experience", i, "description", ev.target.value)} />
                 </Field>
+                <AiRewrite text={e.description} kind="experience" status={p.aiStatus} onApply={(v) => patchList("experience", i, "description", v)} />
               </Item>
             ))}
           </Group>

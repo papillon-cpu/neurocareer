@@ -12,9 +12,10 @@ export default async function EmployeeLayout({ children }: { children: React.Rea
         { href: "/me/profile", label: "Профиль" },
         { href: "/me/tests", label: "Тесты" },
         { href: "/me/resume", label: "Резюме" },
+        { href: "/me/assistant", label: "Консультант" },
         { href: "/me/privacy", label: "Приватность" },
       ]}
-      upcoming={["AI-консультант", "вакансии", "карьерный маршрут"]}
+      upcoming={["вакансии", "карьерный маршрут"]}
     >
       {children}
     </Shell>
