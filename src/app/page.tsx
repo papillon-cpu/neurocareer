@@ -2,6 +2,7 @@ import { brand } from "@/config/brand";
 import { defaultPricing, formatRub } from "@/config/pricing";
 import { ButtonLink } from "@/components/ui/Button";
 import { SkillMap } from "@/components/SkillMap";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const tests = [
   {
@@ -42,6 +43,7 @@ export default function Home() {
             <a className="hover:text-snow" href="#employers">Работодателям</a>
             <a className="hover:text-snow" href="#privacy">Приватность</a>
           </nav>
+          <ThemeToggle />
         </div>
       </header>
 

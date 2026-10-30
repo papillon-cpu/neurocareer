@@ -2,25 +2,53 @@
 
 /* Дизайн-система NEUROCAREER: графит + «нейронный» лайм + холодный фиолет */
 @theme inline {
-  --color-ink: #0c0d10;
-  --color-graphite: #14161b;
-  --color-panel: #1a1d24;
-  --color-line: #2a2e38;
-  --color-mist: #8d94a3;
-  --color-snow: #eef0f4;
-  --color-neuron: #c8f542;
-  --color-neuron-dim: #9bc12f;
-  --color-violet: #8b7bff;
-  --color-danger: #ff6b6b;
+  --color-ink: var(--ink);
+  --color-graphite: var(--graphite);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-mist: var(--mist);
+  --color-snow: var(--snow);
+  --color-neuron: var(--neuron);
+  --color-violet: var(--violet);
+  --color-danger: var(--danger);
 
   --font-sans: var(--font-onest);
   --font-display: var(--font-unbounded);
   --font-mono: var(--font-jetbrains);
 }
 
+/* Тёмная тема — по умолчанию */
 :root {
   color-scheme: dark;
+  --ink: #0c0d10;
+  --graphite: #14161b;
+  --panel: #1a1d24;
+  --line: #2a2e38;
+  --mist: #8d94a3;
+  --snow: #eef0f4;
+  --neuron: #c8f542;
+  --violet: #8b7bff;
+  --danger: #ff6b6b;
+  --grid: rgb(255 255 255 / 0.04);
 }
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ink: #f7f8fa;
+  --graphite: #eceef2;
+  --panel: #ffffff;
+  --line: #d9dce4;
+  --mist: #5b6272;
+  --snow: #14161b;
+  --neuron: #3d6b00;
+  --violet: #5b49e0;
+  --danger: #c93a3a;
+  --grid: rgb(0 0 0 / 0.05);
+}
+
+.theme-toggle .sun { display: none; }
+:root[data-theme="light"] .theme-toggle .sun { display: block; }
+:root[data-theme="light"] .theme-toggle .moon { display: none; }
 
 html {
   scroll-behavior: smooth;
@@ -45,8 +73,8 @@ body {
 
 .grid-lines {
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
   background-size: 64px 64px;
   mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 75%);
 }

@@ -28,7 +28,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang={brand.locale}
       className={`${onest.variable} ${unbounded.variable} ${jetbrains.variable} h-full`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Применяет сохранённую тему до отрисовки, чтобы не было вспышки */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("theme");if(!t)t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
