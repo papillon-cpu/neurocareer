@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { rateLimit } from "@/modules/auth/rate-limit";
 import type { FormState } from "@/modules/auth/schemas";
 import { getEmployeeProfile } from "@/modules/profile/queries";
@@ -18,7 +18,7 @@ const uuid = z.uuid();
 const MAX_JSON_CHARS = 300_000;
 
 export async function createBlankResumeAction(): Promise<void> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const profile = await getEmployeeProfile(user.id);
   let ids;
   try {
@@ -41,7 +41,7 @@ export async function createBlankResumeAction(): Promise<void> {
 }
 
 export async function importResumeAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Выберите файл PDF или DOCX." };
 
@@ -77,7 +77,7 @@ export async function importResumeAction(_prev: FormState, form: FormData): Prom
 }
 
 export async function saveVersionAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const versionId = uuid.safeParse(form.get("versionId"));
   const label = z.string().trim().min(1).max(80).safeParse(form.get("label"));
   const raw = form.get("content");
@@ -104,7 +104,7 @@ export async function saveVersionAction(_prev: FormState, form: FormData): Promi
 
 /** Предлагает улучшенную формулировку. Ничего не сохраняет: применяет или отклоняет пользователь. */
 export async function rewriteTextAction(text: string, kind: "experience" | "summary"): Promise<RewriteResult> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   if (typeof text !== "string" || (kind !== "experience" && kind !== "summary")) {
     return { ok: false, error: "Не удалось обработать запрос." };
   }
@@ -112,14 +112,14 @@ export async function rewriteTextAction(text: string, kind: "experience" | "summ
 }
 
 export async function confirmReviewAction(form: FormData): Promise<void> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const versionId = uuid.safeParse(form.get("versionId"));
   if (versionId.success) await service.confirmReview(user.id, versionId.data);
   revalidatePath("/me/resume", "layout");
 }
 
 export async function newVersionAction(form: FormData): Promise<void> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const resumeId = uuid.safeParse(form.get("resumeId"));
   const fromId = uuid.safeParse(form.get("fromVersionId"));
   const label = z.string().trim().min(1).max(80).safeParse(form.get("label"));
@@ -135,7 +135,7 @@ export async function newVersionAction(form: FormData): Promise<void> {
 }
 
 export async function deleteVersionAction(form: FormData): Promise<void> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const resumeId = uuid.safeParse(form.get("resumeId"));
   const versionId = uuid.safeParse(form.get("versionId"));
   if (!resumeId.success || !versionId.success) return;
@@ -144,7 +144,7 @@ export async function deleteVersionAction(form: FormData): Promise<void> {
 }
 
 export async function deleteResumeAction(form: FormData): Promise<void> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const resumeId = uuid.safeParse(form.get("resumeId"));
   if (resumeId.success) await service.deleteResume(user.id, resumeId.data);
   redirect("/me/resume");

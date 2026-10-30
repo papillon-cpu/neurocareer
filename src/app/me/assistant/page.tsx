@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { z } from "zod";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { aiStatus } from "@/modules/ai/status";
 import { deleteConversationAction, newConversationAction } from "@/modules/assistant/actions";
 import { getConversation, listConversations } from "@/modules/assistant/service";
@@ -13,7 +13,7 @@ export const metadata = { title: "Карьерный консультант" };
 const btn = "rounded-full border border-line px-4 py-1.5 text-xs text-mist hover:border-neuron hover:text-neuron";
 
 export default async function AssistantPage({ searchParams }: { searchParams: Promise<{ c?: string; error?: string }> }) {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const [{ c, error }, conversations, status] = await Promise.all([
     searchParams,
     listConversations(user.id),

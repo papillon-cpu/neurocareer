@@ -26,6 +26,9 @@ export const resumeSourceEnum = pgEnum("resume_source", ["manual", "import"]);
 
 export const attemptStatusEnum = pgEnum("attempt_status", ["in_progress", "completed"]);
 
+export const paymentKindEnum = pgEnum("payment_kind", ["employee_access", "employer_subscription", "extra_contact"]);
+export const paymentStatusEnum = pgEnum("payment_status", ["pending", "succeeded", "failed", "canceled"]);
+
 export const workFormatEnum = pgEnum("work_format", ["office", "hybrid", "remote"]);
 
 export const users = pgTable("users", {
@@ -251,3 +254,100 @@ export const aiMessages = pgTable(
   },
   (t) => [index("ai_msg_conv_idx").on(t.conversationId, t.createdAt)],
 );
+
+/* ---------- оплата ---------- */
+
+// Деньги везде в копейках (целые числа). Платёж меняет статус только по подтверждённому событию провайдера.
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    kind: paymentKindEnum("kind").notNull(),
+    amountKopecks: integer("amount_kopecks").notNull(),
+    currency: text("currency").notNull().default("RUB"),
+    status: paymentStatusEnum("status").notNull().default("pending"),
+    provider: text("provider").notNull(),
+    providerPaymentId: text("provider_payment_id"),
+    meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("payments_user_idx").on(t.userId, t.createdAt),
+    uniqueIndex("payments_provider_id_idx").on(t.provider, t.providerPaymentId),
+  ],
+);
+
+// Журнал событий провайдера: уникальный (провайдер, id события) делает обработку идемпотентной.
+export const paymentEvents = pgTable(
+  "payment_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(),
+    eventId: text("event_id").notNull(),
+    paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "set null" }),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("payment_events_unique_idx").on(t.provider, t.eventId)],
+);
+
+// Разовый доступ сотрудника (после оплаты открываются тесты, резюме, AI).
+export const employeeAccess = pgTable("employee_access", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "set null" }),
+  grantedAt: timestamp("granted_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Один оплаченный период подписки. Цены и лимиты зафиксированы на момент покупки: смена тарифа не трогает текущий период.
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+    periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
+    priceKopecks: integer("price_kopecks").notNull(),
+    includedContacts: integer("included_contacts").notNull(),
+    extraContactKopecks: integer("extra_contact_kopecks").notNull(),
+    paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("subscriptions_user_idx").on(t.userId, t.periodEnd)],
+);
+
+// Открытый работодателем контакт кандидата в рамках периода. Уникальность исключает повторное списание.
+export const contactUnlocks = pgTable(
+  "contact_unlocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    employerUserId: uuid("employer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    candidateUserId: uuid("candidate_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subscriptionId: uuid("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "restrict" }),
+    chargeKind: text("charge_kind").$type<"included" | "paid">().notNull(),
+    paymentId: uuid("payment_id").references(() => payments.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("contact_unlock_unique_idx").on(t.subscriptionId, t.candidateUserId)],
+);
+
+// Настройки продукта, меняемые администратором (тарифы и лимиты).
+export const adminSettings = pgTable("admin_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<unknown>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+});

@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { formatKopecks } from "@/config/pricing";
 import { requireRole } from "@/modules/auth/dal";
+import { hasEmployeeAccess } from "@/modules/billing/access";
+import { getPricing } from "@/modules/billing/settings";
 import { catalog } from "@/modules/assessments/definitions";
 import { getStatuses } from "@/modules/assessments/service";
 import { employeeCompleteness } from "@/modules/profile/completeness";
@@ -11,10 +14,12 @@ const link = "text-neuron underline-offset-4 hover:underline";
 
 export default async function EmployeeHome() {
   const user = await requireRole("employee");
-  const [profile, statuses, resumes] = await Promise.all([
+  const [profile, statuses, resumes, access, pricing] = await Promise.all([
     getEmployeeProfile(user.id),
     getStatuses(user.id),
     listResumes(user.id),
+    hasEmployeeAccess(user.id),
+    getPricing(),
   ]);
   const completeness = employeeCompleteness(profile);
   const name = profile.fullName.split(" ")[0] || "";
@@ -29,6 +34,15 @@ export default async function EmployeeHome() {
         title={name ? `Здравствуй, ${name}` : "Здравствуй"}
         lead="Здесь вся твоя карьерная работа: профиль, оценка потенциала и резюме. AI-консультант, вакансии и карьерный маршрут появятся по мере готовности."
       />
+      {!access && (
+        <div className="mb-6 rounded-3xl border border-neuron/60 bg-neuron/10 p-6">
+          <p className="font-semibold">Откройте тесты, резюме и AI-консультанта</p>
+          <p className="mt-1 text-sm text-mist">Разовая оплата {formatKopecks(pricing.employeeAccessKopecks)}, без подписки.</p>
+          <Link href="/me/pay" className="mt-4 inline-flex rounded-full bg-neuron px-5 py-2.5 text-sm font-semibold text-ink hover:bg-snow">
+            Открыть доступ →
+          </Link>
+        </div>
+      )}
       <div className="grid gap-6 md:grid-cols-2">
         <CompletenessPanel data={completeness} href="/me/profile" />
         <div className="grid gap-6">

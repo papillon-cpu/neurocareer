@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { startAttemptAction } from "@/modules/assessments/actions";
 import { getDefinition } from "@/modules/assessments/definitions";
 import { getStatuses } from "@/modules/assessments/service";
 
 export default async function TestIntroPage({ params }: { params: Promise<{ slug: string }> }) {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const { slug } = await params;
   const def = getDefinition(slug);
   if (!def) notFound();

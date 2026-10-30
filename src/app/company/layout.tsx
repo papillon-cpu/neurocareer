@@ -10,8 +10,9 @@ export default async function EmployerLayout({ children }: { children: React.Rea
       nav={[
         { href: "/company", label: "Главная", exact: true },
         { href: "/company/settings", label: "Компания" },
+        { href: "/company/billing", label: "Подписка" },
       ]}
-      upcoming={["вакансии", "поиск кандидатов", "AI-рекомендации", "контакты", "подписка и платежи"]}
+      upcoming={["вакансии", "поиск кандидатов", "AI-рекомендации", "контакты"]}
     >
       {children}
     </Shell>

@@ -7,8 +7,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <Shell
       area="Администратор"
       email={user.email}
-      nav={[{ href: "/admin", label: "Пользователи", exact: true }]}
-      upcoming={["модерация вакансий", "тарифы и лимиты", "методики тестов", "журнал действий"]}
+      nav={[
+        { href: "/admin", label: "Пользователи", exact: true },
+        { href: "/admin/pricing", label: "Тарифы" },
+      ]}
+      upcoming={["модерация вакансий", "методики тестов", "журнал действий"]}
     >
       {children}
     </Shell>

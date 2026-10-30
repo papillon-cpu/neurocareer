@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { rateLimit } from "@/modules/auth/rate-limit";
 import { explainReport, type ExplainResult } from "./ai";
 import * as service from "./service";
@@ -10,7 +10,7 @@ import * as service from "./service";
 const uuid = z.uuid();
 
 export async function startAttemptAction(form: FormData): Promise<void> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const slug = z.string().max(40).safeParse(form.get("slug"));
   if (!slug.success) redirect("/me/tests");
   const attempt = await service.startOrResume(user.id, slug.data);
@@ -22,7 +22,7 @@ export type AnswerState = { ok: true } | { ok: false; error: string };
 
 /** Вызывается из теста при каждом выборе: прогресс сохраняется сразу. */
 export async function saveAnswerAction(attemptId: string, questionId: string, value: string | number): Promise<AnswerState> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   if (!uuid.safeParse(attemptId).success || typeof questionId !== "string" || questionId.length > 60) {
     return { ok: false, error: "Не удалось сохранить ответ." };
   }
@@ -38,7 +38,7 @@ export async function saveAnswerAction(attemptId: string, questionId: string, va
 }
 
 export async function completeAttemptAction(attemptId: string): Promise<AnswerState> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   if (!uuid.safeParse(attemptId).success) return { ok: false, error: "Тест не найден." };
   const res = await service.completeAttempt(user.id, attemptId);
   if (!res.ok) {
@@ -55,7 +55,7 @@ export async function completeAttemptAction(attemptId: string): Promise<AnswerSt
 
 /** AI-пояснение к своему результату. Права и согласие проверяются на сервере. */
 export async function explainReportAction(attemptId: string, refresh = false): Promise<ExplainResult> {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   if (!uuid.safeParse(attemptId).success) return { ok: false, error: "Результат не найден." };
   return explainReport(user.id, attemptId, refresh === true);
 }

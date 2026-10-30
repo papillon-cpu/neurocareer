@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { startAttemptAction } from "@/modules/assessments/actions";
 import { catalog } from "@/modules/assessments/definitions";
 import { requiredIds } from "@/modules/assessments/engine";
@@ -13,7 +13,7 @@ const primary = "inline-flex rounded-full bg-neuron px-5 py-2.5 text-sm font-sem
 const ghost = "inline-flex rounded-full border border-line px-5 py-2.5 text-sm text-mist hover:border-neuron hover:text-neuron";
 
 export default async function TestsPage() {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const statuses = await getStatuses(user.id);
 
   return (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { createBlankResumeAction } from "@/modules/resume/actions";
 import { listResumes, MAX_RESUMES } from "@/modules/resume/service";
 import { PageTitle, Panel } from "@/components/app/Dashboard";
@@ -11,7 +11,7 @@ const btn =
   "inline-flex rounded-full bg-neuron px-6 py-3 text-sm font-semibold text-ink hover:bg-snow";
 
 export default async function ResumesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const [resumes, { error }] = await Promise.all([listResumes(user.id), searchParams]);
 
   return (

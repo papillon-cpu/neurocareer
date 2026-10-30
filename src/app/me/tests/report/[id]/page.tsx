@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { getReport } from "@/modules/assessments/service";
 import { aiStatus } from "@/modules/ai/status";
 import { commentarySchema } from "@/modules/assessments/ai";
@@ -11,7 +11,7 @@ import { ReportView } from "@/components/tests/ReportView";
 export const metadata = { title: "Результат теста" };
 
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
   const [data, ai] = await Promise.all([getReport(user.id, id), aiStatus(user.id, "report_commentary")]);

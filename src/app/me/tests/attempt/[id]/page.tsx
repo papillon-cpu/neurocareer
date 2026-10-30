@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { getDefinition } from "@/modules/assessments/definitions";
 import { clientQuestions, requiredIds } from "@/modules/assessments/engine";
 import { getAttemptWithAnswers } from "@/modules/assessments/service";
@@ -9,7 +9,7 @@ import { Runner } from "@/components/tests/Runner";
 export const metadata = { title: "Прохождение теста" };
 
 export default async function AttemptPage({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
 

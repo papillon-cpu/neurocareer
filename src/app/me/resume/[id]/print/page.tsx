@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { requireRole } from "@/modules/auth/dal";
+import { requireEmployeeAccess } from "@/modules/billing/access";
 import { getResumeForUser } from "@/modules/resume/service";
 import { PrintButton } from "@/components/resume/PrintButton";
 import { ResumeView } from "@/components/resume/ResumeView";
@@ -15,7 +15,7 @@ export default async function ResumePrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ v?: string }>;
 }) {
-  const user = await requireRole("employee");
+  const user = await requireEmployeeAccess();
   const [{ id }, { v }] = await Promise.all([params, searchParams]);
   if (!z.uuid().safeParse(id).success) notFound();
 
