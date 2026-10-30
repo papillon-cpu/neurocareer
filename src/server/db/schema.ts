@@ -1,0 +1,110 @@
+import {
+  boolean,
+  index,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+export const roleEnum = pgEnum("user_role", ["employee", "employer", "admin"]);
+
+export const consentPurposeEnum = pgEnum("consent_purpose", [
+  "service_processing",
+  "profile_publication",
+  "employer_data_sharing",
+  "external_ai",
+  "marketing",
+]);
+
+export const workFormatEnum = pgEnum("work_format", ["office", "hybrid", "remote"]);
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // Всегда хранится в нижнем регистре, уникален.
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: roleEnum("role").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // В БД лежит только sha256 токена, сам токен есть лишь в cookie пользователя.
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);
+
+export const employeeProfiles = pgTable("employee_profiles", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  fullName: text("full_name").notNull().default(""),
+  headline: text("headline").notNull().default(""),
+  city: text("city").notNull().default(""),
+  desiredRole: text("desired_role").notNull().default(""),
+  workFormat: workFormatEnum("work_format"),
+  about: text("about").notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const companies = pgTable("companies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  site: text("site").notNull().default(""),
+  industry: text("industry").notNull().default(""),
+  size: text("size").notNull().default(""),
+  description: text("description").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const employerProfiles = pgTable("employer_profiles", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  companyId: uuid("company_id").references(() => companies.id, { onDelete: "set null" }),
+  fullName: text("full_name").notNull().default(""),
+  position: text("position").notNull().default(""),
+});
+
+// Каждое согласие — отдельная запись: цель, версия текста, дата, статус.
+export const consentRecords = pgTable(
+  "consent_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    purpose: consentPurposeEnum("purpose").notNull(),
+    textVersion: text("text_version").notNull(),
+    granted: boolean("granted").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("consent_user_purpose_idx").on(t.userId, t.purpose)],
+);
+
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    type: text("type").notNull(),
+    // Только технические данные, без персональных.
+    meta: jsonb("meta").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("audit_type_idx").on(t.type, t.createdAt)],
+);
+
+export type Role = (typeof roleEnum.enumValues)[number];
+export type ConsentPurpose = (typeof consentPurposeEnum.enumValues)[number];

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { brand } from "@/config/brand";
 import { defaultPricing, formatRub } from "@/config/pricing";
 import { ButtonLink } from "@/components/ui/Button";
@@ -43,7 +44,12 @@ export default function Home() {
             <a className="hover:text-snow" href="#employers">Работодателям</a>
             <a className="hover:text-snow" href="#privacy">Приватность</a>
           </nav>
-          <ThemeToggle />
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link href="/login" className="rounded-full border border-line px-4 py-1.5 text-xs text-mist hover:border-neuron hover:text-neuron">
+              Войти
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -67,8 +73,8 @@ export default function Home() {
                 возможности, которые подходят именно тебе.
               </p>
               <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-                <ButtonLink href="#career">Я развиваю карьеру</ButtonLink>
-                <ButtonLink href="#employers" variant="ghost">
+                <ButtonLink href="/register?role=employee">Я развиваю карьеру</ButtonLink>
+                <ButtonLink href="/register?role=employer" variant="ghost">
                   Я ищу сотрудников
                 </ButtonLink>
               </div>
