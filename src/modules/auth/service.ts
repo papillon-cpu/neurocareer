@@ -60,5 +60,6 @@ export async function authenticate(
   const db = await getDb();
   const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
   const ok = await verifyPassword(password, user?.passwordHash ?? (await dummyHash()));
-  return user && ok ? { id: user.id, role: user.role } : null;
+  // Заблокированный аккаунт получает тот же ответ, что и неверный пароль: причина не раскрывается.
+  return user && ok && !user.blockedAt ? { id: user.id, role: user.role } : null;
 }

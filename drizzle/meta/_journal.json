@@ -57,6 +57,13 @@
       "when": 1793360585448,
       "tag": "0007_vacancies",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793381763657,
+      "tag": "0008_user_blocking",
+      "breakpoints": true
     }
   ]
 }

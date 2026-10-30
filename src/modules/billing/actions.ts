@@ -12,6 +12,7 @@ import { startEmployeePayment } from "./access";
 import { startSubscriptionPayment } from "./contacts";
 import { BillingUnavailableError, processPaymentEvent } from "./payments";
 import { getProvider } from "./provider";
+import { returnPathFor } from "./return";
 import { setPricing } from "./settings";
 
 const uuid = z.uuid();
@@ -70,7 +71,7 @@ export async function sandboxResolveAction(form: FormData): Promise<void> {
     status: outcome.data,
     amountKopecks: p.amountKopecks,
   });
-  redirect(p.kind === "employee_access" ? "/me" : "/company/billing");
+  redirect(returnPathFor(p));
 }
 
 const rub = z.coerce.number().min(0).max(100_000);

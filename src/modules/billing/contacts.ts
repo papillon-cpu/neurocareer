@@ -2,6 +2,7 @@ import { and, count, desc, eq, gt, lte } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
 import { activeSubscription } from "./fulfil";
 import { createPayment } from "./payments";
+import { isSafeReturn } from "./return";
 import { getPricing } from "./settings";
 
 export type Subscription = typeof schema.subscriptions.$inferSelect;
@@ -101,6 +102,7 @@ export async function unlockContact(employerUserId: string, candidateUserId: str
 export async function startExtraContactPayment(
   employerUserId: string,
   candidateUserId: string,
+  returnTo?: string,
 ): Promise<{ state: "redirect"; redirectUrl: string } | Exclude<Quote, { state: "included" }>> {
   const q = await quoteContact(employerUserId, candidateUserId);
   if (q.state !== "payment_required") return q.state === "included" ? { state: "payment_required", priceKopecks: 0 } : q;
@@ -109,7 +111,7 @@ export async function startExtraContactPayment(
     kind: "extra_contact",
     amountKopecks: q.priceKopecks,
     description: "Дополнительный контакт кандидата",
-    meta: { candidateUserId },
+    meta: { candidateUserId, ...(returnTo && isSafeReturn(returnTo) ? { returnTo } : {}) },
     returnPath: "/company/billing",
   });
   return { state: "redirect", redirectUrl };

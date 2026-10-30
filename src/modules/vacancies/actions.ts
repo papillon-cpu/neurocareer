@@ -158,7 +158,7 @@ export async function payExtraContactAction(form: FormData): Promise<void> {
   if (quote.state === "payment_required" && quote.priceKopecks !== expected) candidateBack(vacancyId, candidateId, "price_changed");
   let target: string;
   try {
-    const r = await startExtraContactPayment(user.id, candidateId);
+    const r = await startExtraContactPayment(user.id, candidateId, `${base}/${vacancyId}/candidates/${candidateId}`);
     if (r.state !== "redirect") candidateBack(vacancyId, candidateId, r.state === "already" ? "already" : r.state === "no_subscription" ? "no_subscription" : "unavailable");
     await audit(user.id, "contact.payment_started", { candidateId });
     target = r.redirectUrl;

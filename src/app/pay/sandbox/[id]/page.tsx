@@ -6,6 +6,7 @@ import { formatKopecks } from "@/config/pricing";
 import { getCurrentUser } from "@/modules/auth/dal";
 import { sandboxResolveAction } from "@/modules/billing/actions";
 import { getProvider } from "@/modules/billing/provider";
+import { returnPathFor } from "@/modules/billing/return";
 import { getDb, schema } from "@/server/db";
 
 export const metadata = { title: "Тестовая оплата" };
@@ -56,7 +57,7 @@ export default async function SandboxPayPage({ params }: { params: Promise<{ id:
           <p role="status" className="text-sm text-mist">
             Платёж уже обработан: {p.status === "succeeded" ? "оплачен" : p.status === "failed" ? "не прошёл" : "отменён"}.
           </p>
-          <Link href={p.kind === "employee_access" ? "/me" : "/company/billing"} className="text-sm text-neuron underline-offset-4 hover:underline">
+          <Link href={returnPathFor(p)} className="text-sm text-neuron underline-offset-4 hover:underline">
             Вернуться на платформу →
           </Link>
         </div>

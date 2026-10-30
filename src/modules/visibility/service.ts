@@ -144,7 +144,7 @@ async function loadPublished(candidateId: string) {
       content: schema.resumeVersions.content,
     })
     .from(schema.profileVisibility)
-    .innerJoin(schema.users, and(eq(schema.users.id, schema.profileVisibility.userId), isNull(schema.users.deletedAt)))
+    .innerJoin(schema.users, and(eq(schema.users.id, schema.profileVisibility.userId), isNull(schema.users.deletedAt), isNull(schema.users.blockedAt)))
     .innerJoin(schema.employeeProfiles, eq(schema.employeeProfiles.userId, schema.profileVisibility.userId))
     .innerJoin(schema.resumeVersions, eq(schema.resumeVersions.id, schema.profileVisibility.resumeVersionId))
     .where(and(eq(schema.profileVisibility.userId, candidateId), eq(schema.profileVisibility.published, true)));
@@ -174,7 +174,7 @@ export async function listPublishedCandidateIds(limit = 500): Promise<string[]> 
   const rows = await db
     .select({ id: schema.profileVisibility.userId })
     .from(schema.profileVisibility)
-    .innerJoin(schema.users, and(eq(schema.users.id, schema.profileVisibility.userId), isNull(schema.users.deletedAt)))
+    .innerJoin(schema.users, and(eq(schema.users.id, schema.profileVisibility.userId), isNull(schema.users.deletedAt), isNull(schema.users.blockedAt)))
     .where(eq(schema.profileVisibility.published, true))
     .orderBy(schema.profileVisibility.userId)
     .limit(limit);

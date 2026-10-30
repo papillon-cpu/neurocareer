@@ -44,6 +44,8 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   // Аккаунт удалён: персональные данные стёрты, строка остаётся из-за финансовых записей.
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  // Аккаунт заблокирован администратором: войти нельзя, профиль из подбора пропадает.
+  blockedAt: timestamp("blocked_at", { withTimezone: true }),
 });
 
 export const sessions = pgTable(

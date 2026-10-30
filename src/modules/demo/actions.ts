@@ -14,7 +14,7 @@ export async function switchDemoRoleAction(form: FormData): Promise<void> {
 
   const db = await getDb();
   const [user] = await db.select().from(schema.users).where(eq(schema.users.email, DEMO_ACCOUNTS[role]));
-  if (!user || user.deletedAt || user.role !== role) redirect("/?demo=missing");
+  if (!user || user.deletedAt || user.blockedAt || user.role !== role) redirect("/?demo=missing");
 
   await endSession();
   await startSession(user.id);
