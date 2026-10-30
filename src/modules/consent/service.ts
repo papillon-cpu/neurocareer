@@ -1,7 +1,10 @@
-import { desc, eq, and } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/server/db";
+import type { Db } from "@/server/db";
 import type { ConsentPurpose } from "@/server/db/schema";
 import { CONSENT_TEXT_VERSION } from "./texts";
+
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 /** Действует последнее решение по цели: каждое согласие и отзыв хранятся отдельной записью. */
 export async function hasConsent(userId: string, purpose: ConsentPurpose): Promise<boolean> {
@@ -15,12 +18,15 @@ export async function hasConsent(userId: string, purpose: ConsentPurpose): Promi
   return last?.granted ?? false;
 }
 
+/** Запись согласия или отзыва внутри уже открытой транзакции (чтобы менять согласие и его последствия атомарно). */
+export async function recordConsent(tx: Tx, userId: string, purpose: ConsentPurpose, granted: boolean): Promise<void> {
+  await tx.insert(schema.consentRecords).values({ userId, purpose, granted, textVersion: CONSENT_TEXT_VERSION });
+  await tx
+    .insert(schema.auditEvents)
+    .values({ actorUserId: userId, type: granted ? "consent.granted" : "consent.revoked", meta: { purpose } });
+}
+
 export async function setConsent(userId: string, purpose: ConsentPurpose, granted: boolean): Promise<void> {
   const db = await getDb();
-  await db.transaction(async (tx) => {
-    await tx.insert(schema.consentRecords).values({ userId, purpose, granted, textVersion: CONSENT_TEXT_VERSION });
-    await tx
-      .insert(schema.auditEvents)
-      .values({ actorUserId: userId, type: granted ? "consent.granted" : "consent.revoked", meta: { purpose } });
-  });
+  await db.transaction((tx) => recordConsent(tx, userId, purpose, granted));
 }

@@ -10,8 +10,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       nav={[
         { href: "/admin", label: "Пользователи", exact: true },
         { href: "/admin/pricing", label: "Тарифы" },
+        { href: "/admin/audit", label: "Журнал" },
       ]}
-      upcoming={["модерация вакансий", "методики тестов", "журнал действий"]}
+      upcoming={["модерация вакансий", "методики тестов"]}
     >
       {children}
     </Shell>

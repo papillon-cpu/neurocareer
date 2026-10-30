@@ -38,6 +38,8 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   role: roleEnum("role").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Аккаунт удалён: персональные данные стёрты, строка остаётся из-за финансовых записей.
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const sessions = pgTable(
@@ -350,4 +352,19 @@ export const adminSettings = pgTable("admin_settings", {
   value: jsonb("value").$type<unknown>().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+});
+
+// Что и кому видно. По умолчанию всё закрыто: профиль не опубликован, контакты и результаты тестов не передаются.
+export const profileVisibility = pgTable("profile_visibility", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  published: boolean("published").notNull().default(false),
+  // Версия резюме, которую пользователь проверил и разрешил показывать.
+  resumeVersionId: uuid("resume_version_id").references(() => resumeVersions.id, { onDelete: "set null" }),
+  shareEmail: boolean("share_email").notNull().default(false),
+  sharePhone: boolean("share_phone").notNull().default(false),
+  shareTestResults: boolean("share_test_results").notNull().default(false),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -8,18 +8,20 @@ import { getStatuses } from "@/modules/assessments/service";
 import { employeeCompleteness } from "@/modules/profile/completeness";
 import { getEmployeeProfile } from "@/modules/profile/queries";
 import { listResumes } from "@/modules/resume/service";
+import { getPublishedCard } from "@/modules/visibility/service";
 import { CompletenessPanel, PageTitle, Panel } from "@/components/app/Dashboard";
 
 const link = "text-neuron underline-offset-4 hover:underline";
 
 export default async function EmployeeHome() {
   const user = await requireRole("employee");
-  const [profile, statuses, resumes, access, pricing] = await Promise.all([
+  const [profile, statuses, resumes, access, pricing, published] = await Promise.all([
     getEmployeeProfile(user.id),
     getStatuses(user.id),
     listResumes(user.id),
     hasEmployeeAccess(user.id),
     getPricing(),
+    getPublishedCard(user.id),
   ]);
   const completeness = employeeCompleteness(profile);
   const name = profile.fullName.split(" ")[0] || "";
@@ -62,11 +64,15 @@ export default async function EmployeeHome() {
             </Link>
           </Panel>
           <Panel title="Публикация профиля">
-            <p className="font-semibold">Не опубликован</p>
+            <p className="font-semibold">{published ? "Опубликован" : "Не опубликован"}</p>
             <p className="mt-2 text-sm text-mist">
-              Работодатели не видят твой профиль и результаты тестов. Публикация включится отдельным шагом с отдельным
-              согласием.
+              {published
+                ? "Работодатели видят специализацию, город и резюме без имени и контактов."
+                : "Работодатели не видят ваш профиль и результаты тестов. Публикация включается отдельно, с вашего согласия."}
             </p>
+            <Link href="/me/privacy" className={`mt-3 inline-block text-sm ${link}`}>
+              Настройки приватности →
+            </Link>
           </Panel>
         </div>
       </div>

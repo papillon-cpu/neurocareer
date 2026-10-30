@@ -43,6 +43,13 @@
       "when": 1793357250034,
       "tag": "0005_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793358238375,
+      "tag": "0006_privacy",
+      "breakpoints": true
     }
   ]
 }
