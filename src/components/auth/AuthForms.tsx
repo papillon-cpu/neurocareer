@@ -34,7 +34,8 @@ const roles = [
   { value: "employer", title: "Я ищу сотрудников", text: "Вакансии и подбор кандидатов" },
 ] as const;
 
-export function RegisterForm({ initialRole }: { initialRole: "employee" | "employer" }) {
+/** locked: роль выбрана на главной, тогда анкета только для неё, без второго выбора. */
+export function RegisterForm({ initialRole, locked = false }: { initialRole: "employee" | "employer"; locked?: boolean }) {
   const [state, action, pending] = useActionState(registerAction, {});
   const [role, setRole] = useState(initialRole);
   const fe = state.fieldErrors ?? {};
@@ -42,6 +43,8 @@ export function RegisterForm({ initialRole }: { initialRole: "employee" | "emplo
     <form action={action} className="space-y-5" noValidate>
       <FormMessage error={state.error} />
 
+      {locked && <input type="hidden" name="role" value={initialRole} />}
+      {!locked && (
       <fieldset>
         <legend className="mb-2 text-sm font-medium">Кто вы</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -67,6 +70,7 @@ export function RegisterForm({ initialRole }: { initialRole: "employee" | "emplo
         </div>
         {fe.role && <p role="alert" className="mt-1.5 text-xs text-danger">{fe.role[0]}</p>}
       </fieldset>
+      )}
 
       <Field label="Имя" error={fe.fullName?.[0]}>
         <Input name="fullName" autoComplete="name" required defaultValue={state.values?.fullName} error={fe.fullName?.[0]} />
