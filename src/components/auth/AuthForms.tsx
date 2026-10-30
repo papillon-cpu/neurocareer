@@ -30,12 +30,11 @@ export function LoginForm() {
 }
 
 const roles = [
-  { value: "employee", title: "Я развиваю карьеру", text: "Тесты, резюме, карьерный консультант" },
-  { value: "employer", title: "Я ищу сотрудников", text: "Вакансии и подбор кандидатов" },
+  { value: "employee", title: "Сотрудник", text: "Тесты, резюме, карьерный консультант" },
+  { value: "employer", title: "Работодатель", text: "Вакансии и подбор кандидатов" },
 ] as const;
 
-/** locked: роль выбрана на главной, тогда анкета только для неё, без второго выбора. */
-export function RegisterForm({ initialRole, locked = false }: { initialRole: "employee" | "employer"; locked?: boolean }) {
+export function RegisterForm({ initialRole }: { initialRole: "employee" | "employer" }) {
   const [state, action, pending] = useActionState(registerAction, {});
   const [role, setRole] = useState(initialRole);
   const fe = state.fieldErrors ?? {};
@@ -43,16 +42,14 @@ export function RegisterForm({ initialRole, locked = false }: { initialRole: "em
     <form action={action} className="space-y-5" noValidate>
       <FormMessage error={state.error} />
 
-      {locked && <input type="hidden" name="role" value={initialRole} />}
-      {!locked && (
       <fieldset>
-        <legend className="mb-2 text-sm font-medium">Кто вы</legend>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <legend className="sr-only">Кто вы</legend>
+        <div className="grid grid-cols-2 gap-2 rounded-full border border-line p-1">
           {roles.map((r) => (
             <label
               key={r.value}
-              className={`cursor-pointer rounded-2xl border p-4 transition-colors ${
-                role === r.value ? "border-neuron bg-neuron/10" : "border-line hover:border-mist"
+              className={`cursor-pointer rounded-full px-4 py-2.5 text-center text-sm font-semibold transition-colors focus-within:outline-2 focus-within:outline-neuron ${
+                role === r.value ? "bg-neuron text-ink" : "text-mist hover:text-snow"
               }`}
             >
               <input
@@ -63,14 +60,13 @@ export function RegisterForm({ initialRole, locked = false }: { initialRole: "em
                 onChange={() => setRole(r.value)}
                 className="sr-only"
               />
-              <span className="block text-sm font-semibold">{r.title}</span>
-              <span className="mt-1 block text-xs text-mist">{r.text}</span>
+              {r.title}
             </label>
           ))}
         </div>
+        <p className="mt-2 text-xs text-mist">{roles.find((r) => r.value === role)?.text}</p>
         {fe.role && <p role="alert" className="mt-1.5 text-xs text-danger">{fe.role[0]}</p>}
       </fieldset>
-      )}
 
       <Field label="Имя" error={fe.fullName?.[0]}>
         <Input name="fullName" autoComplete="name" required defaultValue={state.values?.fullName} error={fe.fullName?.[0]} />

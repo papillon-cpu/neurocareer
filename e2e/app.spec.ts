@@ -22,7 +22,8 @@ async function newContext(browser: Browser) {
 }
 
 async function registerEmployer(page: Page, email: string) {
-  await page.goto("/register?role=employer");
+  await page.goto("/register");
+  await page.getByText("Работодатель", { exact: true }).click();
   await page.getByLabel("Имя", { exact: true }).fill("Работодатель Тестов");
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.locator('input[name="password"]').fill(E2E.password);
@@ -32,24 +33,24 @@ async function registerEmployer(page: Page, email: string) {
 }
 
 test.describe("публичная часть", () => {
-  test("главная предлагает выбрать роль, анкета регистрации только для выбранной роли", async ({ page }) => {
+  test("главная: две кнопки, в анкете регистрации роль выбирается кнопками сверху", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Кто вы?" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Создать аккаунт" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Войти" }).last()).toBeVisible();
 
-    await page.getByRole("link", { name: /Я развиваю карьеру/ }).click();
-    await expect(page).toHaveURL(/\/employees$/);
-    await page.getByRole("link", { name: "Создать аккаунт" }).first().click();
-    await expect(page).toHaveURL(/\/register\?role=employee$/);
-    await expect(page.getByRole("heading", { name: "Регистрация сотрудника" })).toBeVisible();
-    await expect(page.getByText("Кто вы", { exact: true })).toHaveCount(0);
-    await expect(page.locator('input[type="radio"]')).toHaveCount(0);
+    await page.getByRole("link", { name: "Создать аккаунт" }).click();
+    await expect(page).toHaveURL(/\/register$/);
+    await expect(page.getByRole("heading", { name: "Создать аккаунт" })).toBeVisible();
+    const roles = page.locator('input[type="radio"][name="role"]');
+    await expect(roles).toHaveCount(2);
+    await expect(page.getByRole("radio", { name: "Сотрудник" })).toBeChecked();
+    await page.getByText("Работодатель", { exact: true }).click();
+    await expect(page.getByRole("radio", { name: "Работодатель" })).toBeChecked();
 
-    await page.goto("/");
-    await page.getByRole("link", { name: /Я ищу сотрудников/ }).click();
-    await expect(page).toHaveURL(/\/employers$/);
+    // ссылка с лендинга для работодателей сразу выбирает нужную роль
+    await page.goto("/employers");
     await page.getByRole("link", { name: "Создать аккаунт" }).first().click();
-    await expect(page.getByRole("heading", { name: "Регистрация работодателя" })).toBeVisible();
-    await expect(page.locator('input[type="radio"]')).toHaveCount(0);
+    await expect(page.getByRole("radio", { name: "Работодатель" })).toBeChecked();
   });
 
   test("кабинеты закрыты без входа, здоровье сервиса отвечает", async ({ page, request }) => {
