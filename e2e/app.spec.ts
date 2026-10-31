@@ -63,6 +63,18 @@ test.describe("публичная часть", () => {
     expect(await health.json()).toEqual({ ok: true });
   });
 
+  test("восстановление пароля: ответ одинаков для любого адреса, недействительная ссылка отклоняется", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByRole("link", { name: "Забыли пароль?" }).click();
+    await expect(page).toHaveURL(/\/forgot-password$/);
+    await page.getByLabel("Email").fill("nobody-here@example.com");
+    await page.getByRole("button", { name: "Отправить ссылку" }).click();
+    await expect(page.getByText(/Если такой аккаунт есть/)).toBeVisible();
+
+    await page.goto("/reset-password?token=not-a-real-token-not-a-real-token");
+    await expect(page.getByText("Ссылка недействительна или устарела.")).toBeVisible();
+  });
+
   test("неверный пароль не пускает", async ({ page }) => {
     await attemptLogin(page, E2E.anna.email, "wrong-password-123");
     await expect(page).toHaveURL(/\/login$/);

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireEmployeeAccess } from "@/modules/billing/access";
 import { rateLimit } from "@/modules/auth/rate-limit";
-import { explainReport, type ExplainResult } from "./ai";
+import { explainReport, reviewOpenAnswers, type ExplainResult, type OpenReviewResult } from "./ai";
 import * as service from "./service";
 
 const uuid = z.uuid();
@@ -58,4 +58,11 @@ export async function explainReportAction(attemptId: string, refresh = false): P
   const user = await requireEmployeeAccess();
   if (!uuid.safeParse(attemptId).success) return { ok: false, error: "Результат не найден." };
   return explainReport(user.id, attemptId, refresh === true);
+}
+
+/** Разбор свободных ответов по рубрике. Только для своей попытки; согласие и лимиты проверяет AI-шлюз. */
+export async function reviewOpenAnswersAction(attemptId: string): Promise<OpenReviewResult> {
+  const user = await requireEmployeeAccess();
+  if (!uuid.safeParse(attemptId).success) return { ok: false, error: "Результат не найден." };
+  return reviewOpenAnswers(user.id, attemptId);
 }
