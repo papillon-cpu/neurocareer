@@ -11,6 +11,7 @@ import { passesFilter, scoreCandidate } from "@/modules/matching/score";
 import * as match from "@/modules/matching/service";
 import { findSkill, norm } from "@/modules/matching/skills";
 import { analyzeVacancy } from "@/modules/vacancies/analyzer";
+import * as fav from "@/modules/vacancies/favorites";
 import * as vac from "@/modules/vacancies/service";
 import { emptyContent } from "@/modules/resume/content";
 import * as resumes from "@/modules/resume/service";
@@ -120,6 +121,17 @@ describe("чистая логика подбора", () => {
     expect(findSkill("Node", src)).toBe("text");
     expect(findSkill("Java", src)).toBeNull(); // «java» не находится внутри «javascript»
     expect(findSkill("Docker", src)).toBeNull();
+  });
+
+  it("словарь синонимов: русские и английские написания, неоднозначное не склеивается", () => {
+    const src = { listed: ["докер", "Golang", "бухучет"].map(norm), text: norm("Работал в Битрикс24, писал на C++, вёл Scrum") };
+    expect(findSkill("Docker", src)).toBe("skills");
+    expect(findSkill("Go lang", src)).toBe("skills");
+    expect(findSkill("Бухгалтерский учет", src)).toBe("skills");
+    expect(findSkill("Bitrix", src)).toBe("text");
+    expect(findSkill("cpp", src)).toBe("text");
+    expect(findSkill("Скрам", src)).toBe("text");
+    expect(findSkill("Go", src)).toBeNull(); // «go» слишком неоднозначно, синонимом golang не считается
   });
 
   it("стаж: объединение интервалов, настоящее время, непонятные даты не угадываются", () => {
@@ -534,5 +546,53 @@ describe("демо-режим", () => {
       if (saved.d === undefined) delete env.DEMO_MODE;
       else env.DEMO_MODE = saved.d;
     }
+  });
+});
+
+describe("избранное и история контактов работодателя", () => {
+  async function setup() {
+    const e = await employer();
+    const { id } = await publishedVacancy(e);
+    const c = await candidate({ share: true });
+    const run = await match.runMatching(e, id, { includePartial: false });
+    expect(run.ok).toBe(true);
+    return { e, vacancyId: id, c };
+  }
+
+  it("добавление и удаление, повторное добавление не создаёт дубль", async () => {
+    const { e, vacancyId, c } = await setup();
+    expect(await fav.toggleFavorite(e, vacancyId, c.id)).toBe(true);
+    expect(await fav.isFavorite(e, c.id)).toBe(true);
+    const list = await fav.listFavorites(e);
+    expect(list).toHaveLength(1);
+    expect(list[0].card?.headline).toBe("Разработчик");
+    expect(await fav.toggleFavorite(e, vacancyId, c.id)).toBe(false);
+    expect(await fav.listFavorites(e)).toHaveLength(0);
+  });
+
+  it("нельзя добавить кандидата без рекомендации по своей вакансии, чужие вакансии не подходят", async () => {
+    const { e, vacancyId, c } = await setup();
+    const stranger = await employer();
+    expect(await fav.toggleFavorite(stranger, vacancyId, c.id)).toBeNull();
+    const other = await candidate();
+    expect(await fav.toggleFavorite(e, vacancyId, other.id)).toBeNull();
+    expect(await fav.listFavorites(stranger)).toHaveLength(0);
+  });
+
+  it("если кандидат скрыл профиль, его данные из избранного пропадают", async () => {
+    const { e, vacancyId, c } = await setup();
+    await fav.toggleFavorite(e, vacancyId, c.id);
+    await visibility.hideProfile(c.id, { revokeConsent: false });
+    const [item] = await fav.listFavorites(e);
+    expect(item.card).toBeNull();
+  });
+
+  it("история показывает открытые контакты с переходом к карточке", async () => {
+    const { e, vacancyId, c } = await setup();
+    expect(await fav.listOpenedContacts(e)).toHaveLength(0);
+    await unlockContact(e, c.id);
+    const [o] = await fav.listOpenedContacts(e);
+    expect(o).toMatchObject({ candidateId: c.id, vacancyId, chargeKind: "included" });
+    expect(await fav.listOpenedContacts(await employer())).toHaveLength(0);
   });
 });

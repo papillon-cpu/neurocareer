@@ -14,7 +14,8 @@ import { ALGORITHM_VERSION, explanationSchema, passesFilter, scoreCandidate, typ
 
 /** Сколько результатов сохраняется и показывается за один запуск, и сколько опубликованных профилей просматривается. */
 export const MAX_RESULTS = 20;
-export const MAX_POOL = 300;
+export const MAX_POOL = 2000;
+const BATCH = 20;
 
 export type RunSummary = { runId: string; considered: number; passedFilter: number; shown: number };
 
@@ -33,11 +34,14 @@ export async function runMatching(employerId: string, vacancyId: string, opts: {
 
   const ids = await listPublishedCandidateIds(MAX_POOL);
   const scored: { candidateId: string; s: ReturnType<typeof scoreCandidate> }[] = [];
-  for (const id of ids) {
-    const card = await getPublishedCard(id);
-    if (!card) continue;
-    const s = scoreCandidate(v, card);
-    if (passesFilter(s, opts.includePartial)) scored.push({ candidateId: id, s });
+  // Карточки читаются пачками: быстрее, чем по одной, и не перегружает пул соединений.
+  for (let i = 0; i < ids.length; i += BATCH) {
+    const cards = await Promise.all(ids.slice(i, i + BATCH).map((id) => getPublishedCard(id)));
+    cards.forEach((card, k) => {
+      if (!card) return;
+      const s = scoreCandidate(v, card);
+      if (passesFilter(s, opts.includePartial)) scored.push({ candidateId: ids[i + k], s });
+    });
   }
   // Сортировка: оценка, затем доля закрытых обязательных навыков; при равенстве порядок по id (стабильно между запусками).
   scored.sort((a, b) => b.s.score - a.s.score || b.s.mustMatched - a.s.mustMatched || a.candidateId.localeCompare(b.candidateId));

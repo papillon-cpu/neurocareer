@@ -5,7 +5,8 @@ import { requireRole } from "@/modules/auth/dal";
 import { aiAvailable } from "@/modules/ai/config";
 import { contactUsage, quoteContact } from "@/modules/billing/contacts";
 import { hasReported, recommendationFor, REPORT_REASONS } from "@/modules/matching/service";
-import { explainAiAction, payExtraContactAction, reportAction, unlockContactAction } from "@/modules/vacancies/actions";
+import { explainAiAction, payExtraContactAction, reportAction, toggleFavoriteAction, unlockContactAction } from "@/modules/vacancies/actions";
+import { isFavorite } from "@/modules/vacancies/favorites";
 import { getOwnVacancy } from "@/modules/vacancies/service";
 import { contactsShareable, getCandidateForEmployer } from "@/modules/visibility/service";
 import { PageTitle, Panel } from "@/components/app/Dashboard";
@@ -48,12 +49,13 @@ export default async function CandidatePage({
   const vacancy = await getOwnVacancy(user.id, id);
   if (!rec || !vacancy) notFound();
 
-  const [data, quote, usage, shareable, reported] = await Promise.all([
+  const [data, quote, usage, shareable, reported, favorite] = await Promise.all([
     getCandidateForEmployer(user.id, candidateId),
     quoteContact(user.id, candidateId),
     contactUsage(user.id),
     contactsShareable(candidateId),
     hasReported(user.id, rec.id),
+    isFavorite(user.id, candidateId),
   ]);
   if (!data) notFound();
   const { card, contacts } = data;
@@ -71,6 +73,13 @@ export default async function CandidatePage({
         <PageTitle title={card.headline || "Кандидат"} lead={[card.city, card.desiredRole && `хочет: ${card.desiredRole}`, card.workFormat && FORMAT[card.workFormat as keyof typeof FORMAT]].filter(Boolean).join(" · ")} />
       </div>
       <Notice code={m} />
+      <form action={toggleFavoriteAction} className="mb-6">
+        <input type="hidden" name="vacancyId" value={id} />
+        <input type="hidden" name="candidateId" value={candidateId} />
+        <button type="submit" className={btn}>
+          {favorite ? "Убрать из избранного" : "В избранное"}
+        </button>
+      </form>
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-6">

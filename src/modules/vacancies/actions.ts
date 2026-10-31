@@ -1,5 +1,6 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -10,6 +11,7 @@ import { quoteContact, startExtraContactPayment, unlockContact } from "@/modules
 import * as match from "@/modules/matching/service";
 import { contactsShareable } from "@/modules/visibility/service";
 import { getDb, schema } from "@/server/db";
+import { toggleFavorite } from "./favorites";
 import { analyzeVacancy } from "./analyzer";
 import { NOTICES } from "./notices";
 import * as svc from "./service";
@@ -190,4 +192,24 @@ export async function resolveReportAction(form: FormData): Promise<void> {
   await match.resolveReport(admin.id, rid.data, String(form.get("note") ?? ""));
   revalidatePath("/admin/reports");
   redirect("/admin/reports?m=resolved");
+}
+
+export async function toggleFavoriteAction(form: FormData): Promise<void> {
+  const { user, vacancyId, candidateId } = await candidateContext(form);
+  const now = await toggleFavorite(user.id, vacancyId, candidateId);
+  revalidatePath("/company/favorites");
+  candidateBack(vacancyId, candidateId, now === false ? "favorite_removed" : "favorite_added");
+}
+
+export async function removeFavoriteAction(form: FormData): Promise<void> {
+  const user = await requireRole("employer");
+  const cid = id.safeParse(form.get("candidateId"));
+  if (cid.success) {
+    const db = await getDb();
+    await db
+      .delete(schema.employerFavorites)
+      .where(and(eq(schema.employerFavorites.employerUserId, user.id), eq(schema.employerFavorites.candidateUserId, cid.data)));
+  }
+  revalidatePath("/company/favorites");
+  redirect("/company/favorites");
 }

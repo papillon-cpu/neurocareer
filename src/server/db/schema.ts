@@ -479,3 +479,22 @@ export const passwordResetTokens = pgTable(
   },
   (t) => [index("password_reset_user_idx").on(t.userId)],
 );
+
+/** Избранные кандидаты работодателя. vacancy_id — вакансия, по которой кандидат был рекомендован: через неё открывается карточка. */
+export const employerFavorites = pgTable(
+  "employer_favorites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    employerUserId: uuid("employer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    candidateUserId: uuid("candidate_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    vacancyId: uuid("vacancy_id")
+      .notNull()
+      .references(() => vacancies.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("employer_favorites_unique_idx").on(t.employerUserId, t.candidateUserId)],
+);

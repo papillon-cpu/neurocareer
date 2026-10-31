@@ -26,6 +26,8 @@ export const NOTICES: Record<string, { ok: boolean; text: string }> = {
   ai_failed: { ok: false, text: "AI временно недоступен или ответ не прошёл проверку. Попробуйте позже." },
   reported: { ok: true, text: "Жалоба отправлена администратору. Спасибо." },
   reported_already: { ok: true, text: "Вы уже отправляли жалобу на эту рекомендацию." },
+  favorite_added: { ok: true, text: "Кандидат добавлен в избранное." },
+  favorite_removed: { ok: true, text: "Кандидат убран из избранного." },
   unlocked: { ok: true, text: "Контакт открыт в рамках подписки." },
   already: { ok: true, text: "Контакт уже открыт в этом периоде. Повторного списания нет." },
   not_shareable: { ok: false, text: "Кандидат не разрешил передавать контакты, поэтому открыть нечего. Ничего не списано." },
