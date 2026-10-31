@@ -55,7 +55,7 @@ export async function deleteAccountAction(_prev: FormState, form: FormData): Pro
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.role === "admin") return { error: "Аккаунт администратора удаляется отдельно." };
-  if (!rateLimit(`delete:${user.id}`, 5, 15 * 60 * 1000).ok) return { error: "Слишком много попыток. Подождите немного." };
+  if (!(await rateLimit(`delete:${user.id}`, 5, 15 * 60 * 1000)).ok) return { error: "Слишком много попыток. Подождите немного." };
   if (form.get("confirm") !== "УДАЛИТЬ") return { error: "Введите слово УДАЛИТЬ заглавными буквами." };
 
   const password = form.get("password");

@@ -29,7 +29,7 @@ export async function runMatching(employerId: string, vacancyId: string, opts: {
   const v = await getOwnVacancy(employerId, vacancyId);
   if (!v) return { ok: false, error: "not_found" };
   if (v.status !== "published") return { ok: false, error: "bad_status" };
-  if (!rateLimit(`match:${employerId}`, 20, 60 * 60 * 1000).ok) return { ok: false, error: "rate_limited" };
+  if (!(await rateLimit(`match:${employerId}`, 20, 60 * 60 * 1000)).ok) return { ok: false, error: "rate_limited" };
 
   const ids = await listPublishedCandidateIds(MAX_POOL);
   const scored: { candidateId: string; s: ReturnType<typeof scoreCandidate> }[] = [];

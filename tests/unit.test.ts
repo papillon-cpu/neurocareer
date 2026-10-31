@@ -41,11 +41,11 @@ describe("валидация", () => {
 });
 
 describe("ограничение частоты", () => {
-  it("блокирует после лимита и сбрасывает по окну", () => {
+  it("блокирует после лимита и сбрасывает по окну", async () => {
     const t = 1_000_000;
-    for (let i = 0; i < 3; i++) expect(rateLimit("k", 3, 1000, t).ok).toBe(true);
-    expect(rateLimit("k", 3, 1000, t).ok).toBe(false);
-    expect(rateLimit("k", 3, 1000, t + 1001).ok).toBe(true);
+    for (let i = 0; i < 3; i++) expect((await rateLimit("k", 3, 1000, t)).ok).toBe(true);
+    expect((await rateLimit("k", 3, 1000, t)).ok).toBe(false);
+    expect((await rateLimit("k", 3, 1000, t + 1001)).ok).toBe(true);
   });
 });
 

@@ -103,8 +103,8 @@ async function publishedVacancy(employerId: string, o: Partial<Record<string, st
 beforeAll(async () => {
   await getDb();
 });
-beforeEach(() => {
-  resetRateLimits();
+beforeEach(async () => {
+  await resetRateLimits();
   delete process.env.ANTHROPIC_API_KEY;
 });
 afterEach(() => {

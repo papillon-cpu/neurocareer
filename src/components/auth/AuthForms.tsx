@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { loginAction, registerAction } from "@/modules/auth/actions";
+import { forgotPasswordAction, loginAction, registerAction, resetPasswordAction } from "@/modules/auth/actions";
 import { consentTexts } from "@/modules/consent/texts";
 import { Field, FormMessage, Input, SubmitButton } from "@/components/ui/Field";
 
@@ -19,6 +19,11 @@ export function LoginForm() {
         <Input name="password" type="password" autoComplete="current-password" required error={fe.password?.[0]} />
       </Field>
       <SubmitButton pending={pending}>Войти</SubmitButton>
+      <p className="text-sm text-mist">
+        <Link href="/forgot-password" className="text-neuron underline-offset-4 hover:underline">
+          Забыли пароль?
+        </Link>
+      </p>
       <p className="text-sm text-mist">
         Нет аккаунта?{" "}
         <Link href="/register" className="text-neuron underline-offset-4 hover:underline">
@@ -104,6 +109,52 @@ export function RegisterForm({ initialRole }: { initialRole: "employee" | "emplo
           Войти
         </Link>
       </p>
+    </form>
+  );
+}
+
+export function ForgotPasswordForm() {
+  const [state, action, pending] = useActionState(forgotPasswordAction, {});
+  const fe = state.fieldErrors ?? {};
+  if (state.ok) {
+    return (
+      <p role="status" className="rounded-xl border border-line px-4 py-3 text-sm">
+        Если такой аккаунт есть, мы отправили на этот адрес письмо со ссылкой для смены пароля. Ссылка действует 1 час.
+      </p>
+    );
+  }
+  return (
+    <form action={action} className="space-y-5" noValidate>
+      <FormMessage error={state.error} />
+      <Field label="Email" error={fe.email?.[0]}>
+        <Input name="email" type="email" autoComplete="email" required defaultValue={state.values?.email} error={fe.email?.[0]} />
+      </Field>
+      <SubmitButton pending={pending}>Отправить ссылку</SubmitButton>
+    </form>
+  );
+}
+
+export function ResetPasswordForm({ token }: { token: string }) {
+  const [state, action, pending] = useActionState(resetPasswordAction, {});
+  const fe = state.fieldErrors ?? {};
+  if (state.ok) {
+    return (
+      <p role="status" className="text-sm">
+        Пароль изменён. Все прежние входы завершены.{" "}
+        <Link href="/login" className="text-neuron underline-offset-4 hover:underline">
+          Войти
+        </Link>
+      </p>
+    );
+  }
+  return (
+    <form action={action} className="space-y-5" noValidate>
+      <FormMessage error={state.error} />
+      <input type="hidden" name="token" value={token} />
+      <Field label="Новый пароль" error={fe.password?.[0]}>
+        <Input name="password" type="password" autoComplete="new-password" required error={fe.password?.[0]} />
+      </Field>
+      <SubmitButton pending={pending}>Сменить пароль</SubmitButton>
     </form>
   );
 }

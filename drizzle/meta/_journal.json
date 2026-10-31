@@ -64,6 +64,20 @@
       "when": 1793381763657,
       "tag": "0008_user_blocking",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793453797305,
+      "tag": "0009_rate_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793453941254,
+      "tag": "0010_password_reset",
+      "breakpoints": true
     }
   ]
 }

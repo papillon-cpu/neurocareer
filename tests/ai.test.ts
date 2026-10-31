@@ -52,8 +52,8 @@ beforeAll(async () => {
   await getDb();
 });
 
-beforeEach(() => {
-  resetRateLimits();
+beforeEach(async () => {
+  await resetRateLimits();
   for (const k of ENV_KEYS) delete process.env[k];
   process.env.ANTHROPIC_API_KEY = "test-key-not-real";
 });

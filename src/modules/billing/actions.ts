@@ -17,13 +17,13 @@ import { setPricing } from "./settings";
 
 const uuid = z.uuid();
 
-function limited(userId: string) {
-  return !rateLimit(`pay:${userId}`, 20, 60 * 60 * 1000).ok;
+async function limited(userId: string) {
+  return !(await rateLimit(`pay:${userId}`, 20, 60 * 60 * 1000)).ok;
 }
 
 export async function startEmployeePaymentAction(): Promise<void> {
   const user = await requireRole("employee");
-  if (limited(user.id)) redirect("/me/pay?error=limit");
+  if (await limited(user.id)) redirect("/me/pay?error=limit");
   let target: string;
   try {
     const res = await startEmployeePayment(user.id);
@@ -37,7 +37,7 @@ export async function startEmployeePaymentAction(): Promise<void> {
 
 export async function startSubscriptionAction(): Promise<void> {
   const user = await requireRole("employer");
-  if (limited(user.id)) redirect("/company/billing?error=limit");
+  if (await limited(user.id)) redirect("/company/billing?error=limit");
   let target: string;
   try {
     target = (await startSubscriptionPayment(user.id)).redirectUrl;

@@ -59,3 +59,10 @@ export function zodState(error: z.ZodError, form?: FormData): FormState {
     values: form ? echoValues(form) : undefined,
   };
 }
+
+export const forgotSchema = z.object({ email });
+
+export const resetSchema = z.object({
+  token: z.string().min(20).max(200),
+  password: registerSchema.shape.password,
+});

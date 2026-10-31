@@ -45,7 +45,7 @@ export async function importResumeAction(_prev: FormState, form: FormData): Prom
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) return { error: "Выберите файл PDF или DOCX." };
 
-  if (!rateLimit(`resume-import:${user.id}`, 10, 60 * 60 * 1000).ok) {
+  if (!(await rateLimit(`resume-import:${user.id}`, 10, 60 * 60 * 1000)).ok) {
     return { error: "Слишком много загрузок. Попробуйте через час." };
   }
 

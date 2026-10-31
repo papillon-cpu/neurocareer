@@ -456,3 +456,26 @@ export const recommendationReports = pgTable(
   },
   (t) => [uniqueIndex("rec_report_unique_idx").on(t.recommendationId, t.reporterUserId), index("rec_report_status_idx").on(t.status, t.createdAt)],
 );
+
+/** Счётчики ограничения частоты общие для всех инстансов приложения. */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+});
+
+/** Одноразовые ссылки восстановления пароля. В БД только sha256 токена. */
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("password_reset_user_idx").on(t.userId)],
+);

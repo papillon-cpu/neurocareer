@@ -26,7 +26,7 @@ export async function saveAnswerAction(attemptId: string, questionId: string, va
   if (!uuid.safeParse(attemptId).success || typeof questionId !== "string" || questionId.length > 60) {
     return { ok: false, error: "Не удалось сохранить ответ." };
   }
-  if (!rateLimit(`answer:${user.id}`, 600, 60 * 60 * 1000).ok) {
+  if (!(await rateLimit(`answer:${user.id}`, 600, 60 * 60 * 1000)).ok) {
     return { ok: false, error: "Слишком много запросов. Подождите немного." };
   }
   const res = await service.saveAnswer(user.id, attemptId, questionId, value);

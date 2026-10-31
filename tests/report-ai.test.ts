@@ -53,8 +53,8 @@ async function completedAttempt(consent = true) {
 beforeAll(async () => {
   await getDb();
 });
-beforeEach(() => {
-  resetRateLimits();
+beforeEach(async () => {
+  await resetRateLimits();
   process.env.ANTHROPIC_API_KEY = "test-key-not-real";
 });
 afterEach(() => {

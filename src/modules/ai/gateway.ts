@@ -67,7 +67,7 @@ export async function aiComplete(ctx: AiContext, req: AiRequest): Promise<AiResu
   }
 
   const { requestsPerHour, tokensPerMonth } = limits();
-  if (!rateLimit(`ai:${ctx.userId}`, requestsPerHour, 60 * 60 * 1000).ok) throw new AiRateLimitError();
+  if (!(await rateLimit(`ai:${ctx.userId}`, requestsPerHour, 60 * 60 * 1000)).ok) throw new AiRateLimitError();
   if ((await tokensUsedThisMonth(ctx.userId)) >= tokensPerMonth) throw new AiBudgetError();
 
   const { maxOutputTokens, timeoutMs } = TASKS[ctx.task];
