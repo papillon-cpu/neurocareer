@@ -42,7 +42,11 @@ async function main() {
         continue;
       }
       if (role === "admin") await db.insert(schema.users).values({ email, passwordHash: await hashPassword(password), role });
-      else await registerUser({ fullName, email, password, role, acceptService: true, acceptMarketing: false });
+      else {
+        const u = await registerUser({ fullName, email, password, role, acceptService: true, acceptMarketing: false });
+        // Демо-сотрудник сразу с доступом, чтобы можно было пробовать тесты и резюме без тестовой оплаты.
+        if (role === "employee") await db.insert(schema.employeeAccess).values({ userId: u.id }).onConflictDoNothing();
+      }
       console.log(`Демо-пользователь: ${email}  пароль: ${password}  (только для локальной разработки)`);
     }
   }
