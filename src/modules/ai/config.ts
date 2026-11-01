@@ -1,4 +1,5 @@
-export type ProviderId = "anthropic" | "openai";
+export type ProviderId = "anthropic" | "openai" | "gigachat";
+const ORDER: ProviderId[] = ["anthropic", "gigachat", "openai"];
 export type AiTask = "assistant" | "resume_parse" | "resume_rewrite" | "report_commentary" | "open_feedback" | "vacancy_analysis" | "match_explain";
 
 /** Настройки по задачам: лимит ответа и таймаут. Провайдер и модель берутся из переменных окружения. */
@@ -14,20 +15,25 @@ export const TASKS: Record<AiTask, { maxOutputTokens: number; timeoutMs: number 
 
 const env = (name: string) => process.env[name]?.trim() || undefined;
 
-/** Для OpenAI модель обязательна в окружении: названия моделей быстро устаревают, зашивать их в код нельзя. */
+/** Для OpenAI и GigaChat модель обязательна в окружении: названия моделей быстро устаревают, зашивать их в код нельзя. */
 export function providerModel(p: ProviderId): string | undefined {
-  return p === "anthropic" ? (env("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5") : env("OPENAI_MODEL");
+  if (p === "anthropic") return env("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
+  return env(p === "openai" ? "OPENAI_MODEL" : "GIGACHAT_MODEL");
 }
 
+/** Для GigaChat «ключ» — это ключ авторизации из личного кабинета Сбера (Client ID:Secret в base64). */
 export function providerKey(p: ProviderId): string | undefined {
-  return env(p === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY");
+  return env(p === "anthropic" ? "ANTHROPIC_API_KEY" : p === "openai" ? "OPENAI_API_KEY" : "GIGACHAT_AUTH_KEY");
 }
+
+const KEY_NAME: Record<ProviderId, string> = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY", gigachat: "GIGACHAT_AUTH_KEY" };
+const MODEL_NAME: Record<ProviderId, string> = { anthropic: "ANTHROPIC_MODEL", openai: "OPENAI_MODEL", gigachat: "GIGACHAT_MODEL" };
 
 export function isConfigured(p: ProviderId): boolean {
   return Boolean(providerKey(p) && providerModel(p));
 }
 
-const isProvider = (v: string | undefined): v is ProviderId => v === "anthropic" || v === "openai";
+const isProvider = (v: string | undefined): v is ProviderId => v === "anthropic" || v === "openai" || v === "gigachat";
 
 /**
  * Цепочка провайдеров для задачи: основной, затем резервный (если задан и настроен).
@@ -35,8 +41,10 @@ const isProvider = (v: string | undefined): v is ProviderId => v === "anthropic"
  */
 export function providerChain(task: AiTask): ProviderId[] {
   const perTask = env(`AI_${task.toUpperCase()}_PROVIDER`);
-  const primary = isProvider(perTask) ? perTask : isProvider(env("AI_PRIMARY_PROVIDER")) ? (env("AI_PRIMARY_PROVIDER") as ProviderId) : "anthropic";
+  const explicit = isProvider(perTask) ? perTask : isProvider(env("AI_PRIMARY_PROVIDER")) ? (env("AI_PRIMARY_PROVIDER") as ProviderId) : undefined;
   const fallbackRaw = env("AI_FALLBACK_PROVIDER");
+  // без явного выбора берётся первый настроенный провайдер: Anthropic, затем GigaChat, затем OpenAI
+  const primary = explicit ?? ORDER.find(isConfigured) ?? ORDER.find(providerKey) ?? "anthropic";
   const chain: ProviderId[] = [primary];
   if (isProvider(fallbackRaw) && fallbackRaw !== primary) chain.push(fallbackRaw);
   return chain.filter(isConfigured);
@@ -45,10 +53,11 @@ export function providerChain(task: AiTask): ProviderId[] {
 /** Какие переменные нужно задать, чтобы AI заработал (для понятного сообщения администратору). */
 export function missingConfig(task: AiTask): string[] {
   const perTask = env(`AI_${task.toUpperCase()}_PROVIDER`);
-  const primary = isProvider(perTask) ? perTask : isProvider(env("AI_PRIMARY_PROVIDER")) ? (env("AI_PRIMARY_PROVIDER") as ProviderId) : "anthropic";
+  const explicit = isProvider(perTask) ? perTask : isProvider(env("AI_PRIMARY_PROVIDER")) ? (env("AI_PRIMARY_PROVIDER") as ProviderId) : undefined;
+  const primary = explicit ?? ORDER.find(isConfigured) ?? ORDER.find(providerKey) ?? "anthropic";
   const out: string[] = [];
-  if (!providerKey(primary)) out.push(primary === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY");
-  if (!providerModel(primary)) out.push(primary === "anthropic" ? "ANTHROPIC_MODEL" : "OPENAI_MODEL");
+  if (!providerKey(primary)) out.push(KEY_NAME[primary]);
+  if (!providerModel(primary)) out.push(MODEL_NAME[primary]);
   return out;
 }
 

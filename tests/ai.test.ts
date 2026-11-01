@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { aiComplete, aiCompleteJson, extractJson } from "@/modules/ai/gateway";
@@ -14,7 +14,7 @@ import * as assistant from "@/modules/assistant/service";
 import { getDb, schema } from "@/server/db";
 
 const original = { ...providers };
-const ENV_KEYS = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_MODEL", "AI_FALLBACK_PROVIDER", "AI_PRIMARY_PROVIDER", "AI_REQUESTS_PER_HOUR", "AI_MONTHLY_TOKENS_PER_USER"];
+const ENV_KEYS = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_MODEL", "GIGACHAT_AUTH_KEY", "GIGACHAT_MODEL", "AI_FALLBACK_PROVIDER", "AI_PRIMARY_PROVIDER", "AI_REQUESTS_PER_HOUR", "AI_MONTHLY_TOKENS_PER_USER"];
 
 type Calls = ProviderRequest[];
 function fake(handler: (req: ProviderRequest, n: number) => string | Error): { provider: Provider; calls: Calls } {
@@ -83,6 +83,19 @@ describe("шлюз: доступность и согласие", () => {
     const err = await aiComplete({ userId: await newUser(), task: "assistant" }, { system: "s", messages: [] }).catch((e) => e);
     expect(err).toBeInstanceOf(AiNotConfiguredError);
     expect(err.missing).toContain("OPENAI_MODEL");
+  });
+
+  it("GigaChat: без модели ненастроен; с ключом и моделью выбирается сам, если Anthropic не задан", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    process.env.GIGACHAT_AUTH_KEY = "k";
+    const err = await aiComplete({ userId: await newUser(), task: "assistant" }, { system: "s", messages: [] }).catch((x) => x);
+    expect(err).toBeInstanceOf(AiNotConfiguredError);
+    expect(err.missing).toContain("GIGACHAT_MODEL");
+    process.env.GIGACHAT_MODEL = "m";
+    const f = fake(() => "от гигачата");
+    providers.gigachat = f.provider;
+    const res = await aiComplete({ userId: await newUser(), task: "assistant" }, { system: "s", messages: [] });
+    expect(res).toMatchObject({ text: "от гигачата", provider: "gigachat", model: "m" });
   });
 
   it("без согласия данные провайдеру не уходят; согласие можно отозвать", async () => {
@@ -317,5 +330,32 @@ describe("AI-консультант", () => {
     expect(res.ok).toBe(false);
     expect(f.calls).toHaveLength(0);
     expect((await assistant.getConversation(user, convId))!.messages).toHaveLength(0);
+  });
+});
+
+describe("GigaChat: обмен на токен и запрос", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("берёт токен один раз, шлёт Bearer, читает ответ и расход токенов; 401 даёт ошибку авторизации", async () => {
+    process.env.GIGACHAT_AUTH_KEY = "key-not-real";
+    const calls: { url: string; init: RequestInit }[] = [];
+    let chatStatus = 200;
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      calls.push({ url: String(url), init });
+      if (String(url).includes("/oauth")) return new Response(JSON.stringify({ access_token: "tok", expires_at: Date.now() + 1_800_000 }), { status: 200 });
+      return new Response(JSON.stringify({ choices: [{ message: { content: "привет" } }], usage: { prompt_tokens: 7, completion_tokens: 3 } }), { status: chatStatus });
+    });
+    const req = { model: "m", system: "s", messages: [{ role: "user" as const, content: "q" }], maxTokens: 50, signal: new AbortController().signal };
+    const first = await original.gigachat.complete(req);
+    const second = await original.gigachat.complete(req);
+    expect(first).toEqual({ text: "привет", inputTokens: 7, outputTokens: 3 });
+    expect(second.text).toBe("привет");
+    const oauth = calls.filter((c) => c.url.includes("/oauth"));
+    expect(oauth.length).toBeLessThanOrEqual(1);
+    const chat = calls.find((c) => c.url.endsWith("/chat/completions"))!;
+    expect((chat.init.headers as Record<string, string>).Authorization).toBe("Bearer tok");
+    expect(JSON.parse(String(chat.init.body)).messages[0]).toEqual({ role: "system", content: "s" });
+    chatStatus = 401;
+    await expect(original.gigachat.complete(req)).rejects.toMatchObject({ status: 401 });
   });
 });

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { AiProviderError } from "../errors";
+import { randomUUID } from "node:crypto";
 import { providerKey, type ProviderId } from "../config";
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -59,5 +60,52 @@ const openai: Provider = {
   },
 };
 
+/**
+ * GigaChat (Сбер). Сначала по ключу авторизации получаем токен на 30 минут (кэшируем), затем обычный чат-запрос.
+ * Адреса можно переопределить: GIGACHAT_BASE_URL, GIGACHAT_OAUTH_URL; доступ: GIGACHAT_SCOPE (по умолчанию для физлиц).
+ */
+let gigaToken: { value: string; expiresAt: number } | null = null;
+
+async function gigaAccessToken(signal: AbortSignal): Promise<string> {
+  if (gigaToken && gigaToken.expiresAt - Date.now() > 60_000) return gigaToken.value;
+  const url = process.env.GIGACHAT_OAUTH_URL?.trim() || "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${providerKey("gigachat")}`,
+      RqUID: randomUUID(),
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: new URLSearchParams({ scope: process.env.GIGACHAT_SCOPE?.trim() || "GIGACHAT_API_PERS" }),
+    signal,
+  });
+  if (!res.ok) throw Object.assign(new Error("gigachat oauth"), { status: res.status });
+  const j = (await res.json()) as { access_token?: string; expires_at?: number };
+  if (!j.access_token) throw Object.assign(new Error("gigachat oauth"), { status: 502 });
+  // срок может прийти в секундах или миллисекундах; приводим к миллисекундам
+  const raw = j.expires_at ?? 0;
+  const expiresAt = raw > 0 ? (raw < 1e12 ? raw * 1000 : raw) : Date.now() + 25 * 60_000;
+  gigaToken = { value: j.access_token, expiresAt };
+  return j.access_token;
+}
+
+const gigachat: Provider = {
+  async complete({ model, system, messages, maxTokens, signal }) {
+    const token = await gigaAccessToken(signal);
+    const base = (process.env.GIGACHAT_BASE_URL?.trim() || "https://gigachat.devices.sberbank.ru/api/v1").replace(/\/$/, "");
+    const res = await fetch(`${base}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "system", content: system }, ...messages] }),
+      signal,
+    });
+    if (res.status === 401) gigaToken = null;
+    if (!res.ok) throw Object.assign(new Error("gigachat chat"), { status: res.status });
+    const j = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    return { text: j.choices?.[0]?.message?.content ?? "", inputTokens: j.usage?.prompt_tokens ?? 0, outputTokens: j.usage?.completion_tokens ?? 0 };
+  },
+};
+
 /** Реестр реализаций. Тесты подменяют их заглушками, не обращаясь к сети. */
-export const providers: Record<ProviderId, Provider> = { anthropic, openai };
+export const providers: Record<ProviderId, Provider> = { anthropic, openai, gigachat };
