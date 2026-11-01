@@ -25,7 +25,8 @@
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | для первого запуска | Создают администратора командой `npm run db:seed`. Пароль не короче 12 символов |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | для AI | Ключ из console.anthropic.com |
 | `GIGACHAT_AUTH_KEY`, `GIGACHAT_MODEL` | для AI из России | Ключ авторизации и название модели из кабинета developers.sber.ru. Доп.: `GIGACHAT_SCOPE` (по умолчанию `GIGACHAT_API_PERS`, для ИП и организаций `GIGACHAT_API_B2B` или `GIGACHAT_API_CORP`), `GIGACHAT_BASE_URL`, `GIGACHAT_OAUTH_URL`. Если сервер не доверяет сертификату Сбера, добавьте корневой сертификат Минцифры через `NODE_EXTRA_CA_CERTS=путь/к/файлу.pem` |
-| `AI_PRIMARY_PROVIDER` | нет | `gigachat`, `anthropic` или `openai`. Без значения берётся первый настроенный провайдер |
+| `YANDEX_API_KEY`, `YANDEX_FOLDER_ID`, `YANDEX_MODEL` | для AI из России | API-ключ сервисного аккаунта Yandex Cloud, идентификатор каталога и модель (например `yandexgpt/latest`). Доп.: `YANDEX_BASE_URL` |
+| `AI_PRIMARY_PROVIDER` | нет | `gigachat`, `yandex`, `anthropic` или `openai`. Без значения берётся первый настроенный провайдер |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | по желанию | Запасной AI-провайдер, `AI_FALLBACK_PROVIDER=openai` |
 | `BILLING_PROVIDER` | для оплаты | Имя подключённого провайдера. Пусто в production = оплата выключена. **Не ставьте `sandbox` на боевом сайте**: это имитация без денег |
 | `BILLING_WEBHOOK_SECRET` | для оплаты | Секрет подписи уведомлений провайдера |

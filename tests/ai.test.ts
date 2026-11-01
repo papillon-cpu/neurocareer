@@ -14,7 +14,7 @@ import * as assistant from "@/modules/assistant/service";
 import { getDb, schema } from "@/server/db";
 
 const original = { ...providers };
-const ENV_KEYS = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_MODEL", "GIGACHAT_AUTH_KEY", "GIGACHAT_MODEL", "AI_FALLBACK_PROVIDER", "AI_PRIMARY_PROVIDER", "AI_REQUESTS_PER_HOUR", "AI_MONTHLY_TOKENS_PER_USER"];
+const ENV_KEYS = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_MODEL", "GIGACHAT_AUTH_KEY", "GIGACHAT_MODEL", "YANDEX_API_KEY", "YANDEX_FOLDER_ID", "YANDEX_MODEL", "AI_FALLBACK_PROVIDER", "AI_PRIMARY_PROVIDER", "AI_REQUESTS_PER_HOUR", "AI_MONTHLY_TOKENS_PER_USER"];
 
 type Calls = ProviderRequest[];
 function fake(handler: (req: ProviderRequest, n: number) => string | Error): { provider: Provider; calls: Calls } {
@@ -330,6 +330,35 @@ describe("AI-консультант", () => {
     expect(res.ok).toBe(false);
     expect(f.calls).toHaveLength(0);
     expect((await assistant.getConversation(user, convId))!.messages).toHaveLength(0);
+  });
+});
+
+describe("YandexGPT: запрос и разбор ответа", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("собирает modelUri из каталога и модели, шлёт Api-Key, читает ответ и расход", async () => {
+    process.env.YANDEX_API_KEY = "ykey-not-real";
+    process.env.YANDEX_FOLDER_ID = "b1gfolder";
+    let seen: { url: string; init: RequestInit } | null = null;
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      seen = { url: String(url), init };
+      return new Response(JSON.stringify({ alternatives: [{ message: { role: "assistant", text: "привет" } }], usage: { inputTextTokens: "11", completionTokens: "4" } }), { status: 200 });
+    });
+    const req = { model: "yandexgpt/latest", system: "s", messages: [{ role: "user" as const, content: "q" }], maxTokens: 50, signal: new AbortController().signal };
+    expect(await original.yandex.complete(req)).toEqual({ text: "привет", inputTokens: 11, outputTokens: 4 });
+    const body = JSON.parse(String(seen!.init.body));
+    expect(body.modelUri).toBe("gpt://b1gfolder/yandexgpt/latest");
+    expect(body.messages[0]).toEqual({ role: "system", text: "s" });
+    expect((seen!.init.headers as Record<string, string>).Authorization).toBe("Api-Key ykey-not-real");
+  });
+
+  it("без каталога и без полного modelUri считается ненастроенным", async () => {
+    delete process.env.ANTHROPIC_API_KEY;
+    process.env.YANDEX_API_KEY = "k";
+    process.env.YANDEX_MODEL = "yandexgpt/latest";
+    const err = await aiComplete({ userId: await newUser(), task: "assistant" }, { system: "s", messages: [] }).catch((x) => x);
+    expect(err).toBeInstanceOf(AiNotConfiguredError);
+    expect(err.missing.join(" ")).toContain("YANDEX_FOLDER_ID");
   });
 });
 

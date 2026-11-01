@@ -1,5 +1,5 @@
-export type ProviderId = "anthropic" | "openai" | "gigachat";
-const ORDER: ProviderId[] = ["anthropic", "gigachat", "openai"];
+export type ProviderId = "anthropic" | "openai" | "gigachat" | "yandex";
+const ORDER: ProviderId[] = ["anthropic", "gigachat", "yandex", "openai"];
 export type AiTask = "assistant" | "resume_parse" | "resume_rewrite" | "report_commentary" | "open_feedback" | "vacancy_analysis" | "match_explain";
 
 /** Настройки по задачам: лимит ответа и таймаут. Провайдер и модель берутся из переменных окружения. */
@@ -18,22 +18,27 @@ const env = (name: string) => process.env[name]?.trim() || undefined;
 /** Для OpenAI и GigaChat модель обязательна в окружении: названия моделей быстро устаревают, зашивать их в код нельзя. */
 export function providerModel(p: ProviderId): string | undefined {
   if (p === "anthropic") return env("ANTHROPIC_MODEL") ?? "claude-sonnet-5-5";
+  if (p === "yandex") {
+    // модель задаётся именем (например yandexgpt/latest) вместе с каталогом, либо целиком в виде gpt://...
+    const m = env("YANDEX_MODEL");
+    return m && (m.startsWith("gpt://") || env("YANDEX_FOLDER_ID")) ? m : undefined;
+  }
   return env(p === "openai" ? "OPENAI_MODEL" : "GIGACHAT_MODEL");
 }
 
 /** Для GigaChat «ключ» — это ключ авторизации из личного кабинета Сбера (Client ID:Secret в base64). */
 export function providerKey(p: ProviderId): string | undefined {
-  return env(p === "anthropic" ? "ANTHROPIC_API_KEY" : p === "openai" ? "OPENAI_API_KEY" : "GIGACHAT_AUTH_KEY");
+  return env(p === "anthropic" ? "ANTHROPIC_API_KEY" : p === "openai" ? "OPENAI_API_KEY" : p === "yandex" ? "YANDEX_API_KEY" : "GIGACHAT_AUTH_KEY");
 }
 
-const KEY_NAME: Record<ProviderId, string> = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY", gigachat: "GIGACHAT_AUTH_KEY" };
-const MODEL_NAME: Record<ProviderId, string> = { anthropic: "ANTHROPIC_MODEL", openai: "OPENAI_MODEL", gigachat: "GIGACHAT_MODEL" };
+const KEY_NAME: Record<ProviderId, string> = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY", gigachat: "GIGACHAT_AUTH_KEY", yandex: "YANDEX_API_KEY" };
+const MODEL_NAME: Record<ProviderId, string> = { anthropic: "ANTHROPIC_MODEL", openai: "OPENAI_MODEL", gigachat: "GIGACHAT_MODEL", yandex: "YANDEX_MODEL и YANDEX_FOLDER_ID" };
 
 export function isConfigured(p: ProviderId): boolean {
   return Boolean(providerKey(p) && providerModel(p));
 }
 
-const isProvider = (v: string | undefined): v is ProviderId => v === "anthropic" || v === "openai" || v === "gigachat";
+const isProvider = (v: string | undefined): v is ProviderId => v === "anthropic" || v === "openai" || v === "gigachat" || v === "yandex";
 
 /**
  * Цепочка провайдеров для задачи: основной, затем резервный (если задан и настроен).

@@ -107,5 +107,33 @@ const gigachat: Provider = {
   },
 };
 
+/**
+ * YandexGPT (Yandex Cloud, AI Studio). Ключ — API-ключ сервисного аккаунта; модель — имя вроде yandexgpt/latest,
+ * которое вместе с YANDEX_FOLDER_ID превращается в modelUri gpt://<каталог>/<модель>.
+ */
+const yandex: Provider = {
+  async complete({ model, system, messages, maxTokens, signal }) {
+    const folder = process.env.YANDEX_FOLDER_ID?.trim();
+    const url = process.env.YANDEX_BASE_URL?.trim() || "https://ai.api.cloud.yandex.net/foundationModels/v1/completion";
+    const headers: Record<string, string> = { Authorization: `Api-Key ${providerKey("yandex")}`, "Content-Type": "application/json" };
+    if (folder) headers["x-folder-id"] = folder;
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        modelUri: model.startsWith("gpt://") ? model : `gpt://${folder}/${model}`,
+        completionOptions: { stream: false, temperature: 0.3, maxTokens: String(maxTokens) },
+        messages: [{ role: "system", text: system }, ...messages.map((m) => ({ role: m.role, text: m.content }))],
+      }),
+      signal,
+    });
+    if (!res.ok) throw Object.assign(new Error("yandex chat"), { status: res.status });
+    type Body = { alternatives?: { message?: { text?: string } }[]; usage?: { inputTextTokens?: string; completionTokens?: string } };
+    const raw = (await res.json()) as Body & { result?: Body };
+    const j = raw.result ?? raw;
+    return { text: j.alternatives?.[0]?.message?.text ?? "", inputTokens: Number(j.usage?.inputTextTokens ?? 0), outputTokens: Number(j.usage?.completionTokens ?? 0) };
+  },
+};
+
 /** Реестр реализаций. Тесты подменяют их заглушками, не обращаясь к сети. */
-export const providers: Record<ProviderId, Provider> = { anthropic, openai, gigachat };
+export const providers: Record<ProviderId, Provider> = { anthropic, openai, gigachat, yandex };
