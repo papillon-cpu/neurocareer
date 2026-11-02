@@ -93,7 +93,7 @@ async function gigaAccessToken(signal: AbortSignal): Promise<string> {
 const gigachat: Provider = {
   async complete({ model, system, messages, maxTokens, signal }) {
     const token = await gigaAccessToken(signal);
-    const base = (process.env.GIGACHAT_BASE_URL?.trim() || "https://gigachat.devices.sberbank.ru/api/v1").replace(/\/$/, "");
+    const base = (process.env.GIGACHAT_BASE_URL?.trim() || "https://api.giga.chat/v1").replace(/\/$/, "");
     const res = await fetch(`${base}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Accept: "application/json" },
