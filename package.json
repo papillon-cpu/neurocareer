@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -12,6 +12,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "typecheck": "tsc --noEmit",
+    "ai:check": "tsx scripts/ai-check.ts",
     "test:e2e": "npm run build && tsx e2e/prepare.ts && playwright test"
   },
   "dependencies": {

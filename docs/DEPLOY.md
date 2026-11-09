@@ -24,9 +24,10 @@
 | `DATABASE_URL` | да | `postgres://пользователь:пароль@хост:5432/база` (с `?sslmode=require`, если база требует) |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | для первого запуска | Создают администратора командой `npm run db:seed`. Пароль не короче 12 символов |
 | `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | для AI | Ключ из console.anthropic.com |
-| `GIGACHAT_AUTH_KEY`, `GIGACHAT_MODEL` | для AI из России | Ключ авторизации и название модели из кабинета developers.sber.ru. Доп.: `GIGACHAT_SCOPE` (по умолчанию `GIGACHAT_API_PERS`, для ИП и организаций `GIGACHAT_API_B2B` или `GIGACHAT_API_CORP`), `GIGACHAT_BASE_URL`, `GIGACHAT_OAUTH_URL`. Если сервер не доверяет сертификату Сбера, добавьте корневой сертификат Минцифры через `NODE_EXTRA_CA_CERTS=путь/к/файлу.pem` |
-| `YANDEX_API_KEY`, `YANDEX_FOLDER_ID`, `YANDEX_MODEL` | для AI из России | API-ключ сервисного аккаунта Yandex Cloud, идентификатор каталога и модель (например `yandexgpt/latest`). Доп.: `YANDEX_BASE_URL` |
-| `AI_PRIMARY_PROVIDER` | нет | `gigachat`, `yandex`, `anthropic` или `openai`. Без значения берётся первый настроенный провайдер |
+| `GIGACHAT_AUTH_KEY`, `GIGACHAT_MODEL` | для AI из России | Ключ авторизации и название модели из кабинета developers.sber.ru. Доп.: `GIGACHAT_SCOPE` (по умолчанию `GIGACHAT_API_PERS`, для ИП и организаций `GIGACHAT_API_B2B` или `GIGACHAT_API_CORP`), `GIGACHAT_BASE_URL`, `GIGACHAT_OAUTH_URL`. Сертификат Сбера выпущен российским УЦ: корневой сертификат Минцифры лежит в репозитории (`certs/russian-trusted-root-ca.crt`) и подхватывается сам. Если сервер не доверяет и этому сертификату, добавьте его через `NODE_EXTRA_CA_CERTS=путь/к/файлу.pem` |
+| `YANDEX_AI_KEY`, `YANDEX_AI_FOLDER`, `YANDEX_AI_MODEL` | для AI из России | YandexGPT в AI Studio: API-ключ сервисного аккаунта (роль `ai.languageModels.user`), идентификатор каталога и модель (например `yandexgpt-5.1`). Ключ и каталог берутся в консоли Yandex Cloud → AI Studio |
+| `YANDEX_API_KEY`, `YANDEX_FOLDER_ID`, `YANDEX_MODEL` | нет | Старый API Yandex Cloud — только для кабинетов, настроенных ранее. Доп.: `YANDEX_BASE_URL` |
+| `AI_PRIMARY_PROVIDER` | нет | `gigachat`, `yandexai`, `yandex`, `anthropic` или `openai`. Без значения берётся первый настроенный провайдер |
 | `OPENAI_API_KEY`, `OPENAI_MODEL` | по желанию | Запасной AI-провайдер, `AI_FALLBACK_PROVIDER=openai` |
 | `BILLING_PROVIDER` | для оплаты | Имя подключённого провайдера. Пусто в production = оплата выключена. **Не ставьте `sandbox` на боевом сайте**: это имитация без денег |
 | `BILLING_WEBHOOK_SECRET` | для оплаты | Секрет подписи уведомлений провайдера |
@@ -62,8 +63,12 @@ npm run start             # сайт на порту 3000
 ## 5. Проверка после запуска
 
 - `https://ваш-домен/api/health` отвечает `{"ok":true}`: приложение работает и база отвечает. Подключите эту ссылку к мониторингу.
-- Войдите администратором, откройте «Тарифы» и «Журнал».
+- Войдите администратором, откройте «Тарифы», «AI» и «Журнал». В разделе «AI» выберите провайдера и модель и нажмите «Проверить подключение» — должен быть ответ «Провайдер отвечает».
 - Пройдите чек-лист из `docs/LAUNCH_CHECKLIST.md`.
+
+## 5.1. Проверка AI на живых ключах
+
+На сервере с ключами в окружении выполните `npm run ai:check` — скрипт делает настоящий запрос к модели (по умолчанию GigaChat, другой провайдер: `npm run ai:check -- yandexai`) и проверяет, что ответ разбирается схемой. Для GigaChat он печатает время ответа и расход токенов.
 
 ## 6. Ограничения текущей версии
 
