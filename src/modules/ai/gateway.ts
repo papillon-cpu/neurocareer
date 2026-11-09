@@ -4,9 +4,10 @@ import { rateLimit } from "@/modules/auth/rate-limit";
 import { hasConsent } from "@/modules/consent/service";
 import type { ConsentPurpose } from "@/server/db/schema";
 import { getDb, schema } from "@/server/db";
-import { limits, missingConfig, providerChain, providerModel, TASKS, type AiTask, type ProviderId } from "./config";
+import { limits, TASKS, type AiTask, type ProviderId } from "./config";
 import { AiBudgetError, AiConsentError, AiInvalidOutputError, AiNotConfiguredError, AiProviderError, AiRateLimitError } from "./errors";
 import { classifyError, providers, type ChatMessage } from "./providers";
+import { chainWithSettings, getAiSettings, missingWithSettings, modelWithSettings } from "./settings";
 
 /**
  * Чьё согласие нужно перед отправкой данных провайдеру. По умолчанию — согласие самого пользователя на внешний AI.
@@ -58,8 +59,9 @@ async function tokensUsedThisMonth(userId: string): Promise<number> {
  * поэтому временные сбои можно безопасно повторить и переключиться на резервного провайдера.
  */
 export async function aiComplete(ctx: AiContext, req: AiRequest): Promise<AiResult> {
-  const chain = providerChain(ctx.task);
-  if (chain.length === 0) throw new AiNotConfiguredError(missingConfig(ctx.task));
+  const settings = await getAiSettings();
+  const chain = chainWithSettings(ctx.task, settings);
+  if (chain.length === 0) throw new AiNotConfiguredError(missingWithSettings(ctx.task, settings));
 
   const required = ctx.consent ?? { purpose: "external_ai" as const, userIds: [ctx.userId] };
   if (required !== "none") {
@@ -74,7 +76,7 @@ export async function aiComplete(ctx: AiContext, req: AiRequest): Promise<AiResu
   let lastError: AiProviderError = new AiProviderError("unknown", false);
 
   for (const id of chain) {
-    const model = providerModel(id)!;
+    const model = modelWithSettings(id, settings)!;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS_PER_PROVIDER; attempt++) {
       const t0 = Date.now();
       const controller = new AbortController();

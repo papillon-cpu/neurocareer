@@ -1,5 +1,5 @@
-export type ProviderId = "anthropic" | "openai" | "gigachat" | "yandex";
-const ORDER: ProviderId[] = ["anthropic", "gigachat", "yandex", "openai"];
+export type ProviderId = "anthropic" | "openai" | "gigachat" | "yandexai" | "yandex";
+const ORDER: ProviderId[] = ["anthropic", "gigachat", "yandexai", "yandex", "openai"];
 export type AiTask = "assistant" | "resume_parse" | "resume_rewrite" | "report_commentary" | "open_feedback" | "vacancy_analysis" | "match_explain";
 
 /** Настройки по задачам: лимит ответа и таймаут. Провайдер и модель берутся из переменных окружения. */
@@ -10,7 +10,7 @@ export const TASKS: Record<AiTask, { maxOutputTokens: number; timeoutMs: number 
   report_commentary: { maxOutputTokens: 1500, timeoutMs: 45_000 },
   open_feedback: { maxOutputTokens: 1500, timeoutMs: 45_000 },
   vacancy_analysis: { maxOutputTokens: 1500, timeoutMs: 45_000 },
-  match_explain: { maxOutputTokens: 1000, timeoutMs: 45_000 },
+  match_explain: { maxOutputTokens: 1000, timeoutMs: 30_000 },
 };
 
 const env = (name: string) => process.env[name]?.trim() || undefined;
@@ -23,22 +23,41 @@ export function providerModel(p: ProviderId): string | undefined {
     const m = env("YANDEX_MODEL");
     return m && (m.startsWith("gpt://") || env("YANDEX_FOLDER_ID")) ? m : undefined;
   }
+  if (p === "yandexai") {
+    // AI Studio: модель именем (yandexgpt-5.1) вместе с каталогом, либо целиком в виде gpt://...
+    const m = env("YANDEX_AI_MODEL");
+    return m && (m.startsWith("gpt://") || env("YANDEX_AI_FOLDER")) ? m : undefined;
+  }
   return env(p === "openai" ? "OPENAI_MODEL" : "GIGACHAT_MODEL");
 }
 
 /** Для GigaChat «ключ» — это ключ авторизации из личного кабинета Сбера (Client ID:Secret в base64). */
 export function providerKey(p: ProviderId): string | undefined {
+  if (p === "yandexai") return env("YANDEX_AI_KEY");
   return env(p === "anthropic" ? "ANTHROPIC_API_KEY" : p === "openai" ? "OPENAI_API_KEY" : p === "yandex" ? "YANDEX_API_KEY" : "GIGACHAT_AUTH_KEY");
 }
 
-const KEY_NAME: Record<ProviderId, string> = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY", gigachat: "GIGACHAT_AUTH_KEY", yandex: "YANDEX_API_KEY" };
-const MODEL_NAME: Record<ProviderId, string> = { anthropic: "ANTHROPIC_MODEL", openai: "OPENAI_MODEL", gigachat: "GIGACHAT_MODEL", yandex: "YANDEX_MODEL и YANDEX_FOLDER_ID" };
+const KEY_NAME: Record<ProviderId, string> = {
+  anthropic: "ANTHROPIC_API_KEY",
+  openai: "OPENAI_API_KEY",
+  gigachat: "GIGACHAT_AUTH_KEY",
+  yandexai: "YANDEX_AI_KEY",
+  yandex: "YANDEX_API_KEY",
+};
+const MODEL_NAME: Record<ProviderId, string> = {
+  anthropic: "ANTHROPIC_MODEL",
+  openai: "OPENAI_MODEL",
+  gigachat: "GIGACHAT_MODEL",
+  yandexai: "YANDEX_AI_MODEL и YANDEX_AI_FOLDER",
+  yandex: "YANDEX_MODEL и YANDEX_FOLDER_ID",
+};
 
 export function isConfigured(p: ProviderId): boolean {
   return Boolean(providerKey(p) && providerModel(p));
 }
 
-const isProvider = (v: string | undefined): v is ProviderId => v === "anthropic" || v === "openai" || v === "gigachat" || v === "yandex";
+const isProvider = (v: string | undefined): v is ProviderId =>
+  v === "anthropic" || v === "openai" || v === "gigachat" || v === "yandexai" || v === "yandex";
 
 /**
  * Цепочка провайдеров для задачи: основной, затем резервный (если задан и настроен).
@@ -48,7 +67,7 @@ export function providerChain(task: AiTask): ProviderId[] {
   const perTask = env(`AI_${task.toUpperCase()}_PROVIDER`);
   const explicit = isProvider(perTask) ? perTask : isProvider(env("AI_PRIMARY_PROVIDER")) ? (env("AI_PRIMARY_PROVIDER") as ProviderId) : undefined;
   const fallbackRaw = env("AI_FALLBACK_PROVIDER");
-  // без явного выбора берётся первый настроенный провайдер: Anthropic, затем GigaChat, затем OpenAI
+  // без явного выбора берётся первый настроенный провайдер: Anthropic, затем GigaChat, затем YandexGPT, затем OpenAI
   const primary = explicit ?? ORDER.find(isConfigured) ?? ORDER.find(providerKey) ?? "anthropic";
   const chain: ProviderId[] = [primary];
   if (isProvider(fallbackRaw) && fallbackRaw !== primary) chain.push(fallbackRaw);

@@ -12,6 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin/vacancies", label: "Вакансии" },
         { href: "/admin/reports", label: "Жалобы" },
         { href: "/admin/pricing", label: "Тарифы" },
+        { href: "/admin/ai", label: "AI" },
         { href: "/admin/audit", label: "Журнал" },
       ]}
       upcoming={["методики тестов"]}
