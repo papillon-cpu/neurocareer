@@ -2,6 +2,7 @@ import Link from "next/link";
 import { brand } from "@/config/brand";
 import { DemoSwitcher } from "@/components/DemoSwitcher";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { REQUESTS_URL } from "@/config/site";
 
 export type NavAnchor = { href: string; label: string };
 
@@ -39,6 +40,9 @@ export function SiteFooter() {
     <footer className="border-t border-line">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-8 text-xs text-mist sm:flex-row sm:justify-between">
         <span>© {brand.name}. Проект на стадии разработки.</span>
+        <a href={REQUESTS_URL} target="_blank" rel="noreferrer" className="hover:text-neuron">
+          Написать, что изменить на сайте
+        </a>
         <span>Юридические тексты будут проверены специалистом до запуска.</span>
       </div>
     </footer>

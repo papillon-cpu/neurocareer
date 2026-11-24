@@ -34,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Применяет сохранённую тему до отрисовки, чтобы не было вспышки */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem("theme");if(!t)t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t}catch(e){}`,
+            __html: `try{var t=localStorage.getItem("theme")==="light"?"light":"dark";var e=document.documentElement;e.dataset.theme=t;e.style.colorScheme=t}catch(e){}`,
           }}
         />
       </head>
