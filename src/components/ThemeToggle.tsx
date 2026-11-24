@@ -9,8 +9,9 @@ type Theme = "light" | "dark";
  * NEUROCAREER theme toggle.
  * The real theme always lives in the DOM: the server renders the dark theme by
  * default, while the saved user choice is applied by the inline script in layout.tsx.
- * So after hydration we sync the state with document.documentElement - otherwise the
- * button would remember only the server value and a click would have no effect.
+ * So after hydration we sync the state with document.documentElement, and every
+ * click reads the current theme from the DOM instead of React state - the state
+ * can still lag behind right after hydration and would toggle the wrong way.
  */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("dark");
@@ -24,7 +25,8 @@ export function ThemeToggle() {
   }, []);
 
   function toggle() {
-    const next: Theme = theme === "light" ? "dark" : "light";
+    const current = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+    const next: Theme = current === "light" ? "dark" : "light";
     document.documentElement.dataset.theme = next;
     document.documentElement.style.colorScheme = next;
     setTheme(next);
